@@ -108,10 +108,13 @@ async function wcFetch<T>(
     }
   });
 
+  console.log(`[wcFetch] Fetching ${url.toString()} (Key length: ${CONSUMER_KEY?.length || 0})`);
+
   const response = await fetch(url.toString(), {
     headers: {
       Authorization: getAuthHeader(),
       "Content-Type": "application/json",
+      "User-Agent": "Veloria-Vault-NextJS",
     },
     next: { revalidate: 300 },
   });
