@@ -16,11 +16,14 @@ export interface Coupon {
   categoryIds?: number[];
   excludedCategoryIds?: number[];
   // Tiered discount specific
+  // Tiered discount specific (deprecated, now using manual coupons)
   tiers?: {
     minQuantity: number;
     discountPercent: number;
     bonusPrepaidDiscount?: number;
   }[];
+  // Minimum quantity required in cart for this coupon to apply
+  minQuantity?: number;
   // For automatic coupons (like tiered discounts)
   isAutomatic: boolean;
 }
@@ -48,19 +51,7 @@ export interface DiscountCalculation {
   }[];
 }
 
-export const TIERED_DISCOUNTS = {
-  buy1: {
-    minQuantity: 1,
-    discountPercent: 15,
-    label: "Buy 1 Get 15% Off",
-  },
-  buy2: {
-    minQuantity: 2,
-    discountPercent: 20,
-    prepaidBonusPercent: 5,
-    label: "Buy 2 Get 20% Off + 5% Prepaid",
-  },
-};
+export const PREPAID_BONUS_PERCENT = 5;
 
 export const COD_FEE = 149;
 export const FREE_SHIPPING_THRESHOLD = 3000;

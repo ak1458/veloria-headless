@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { calculateDiscounts, validateCoupon, getTierDiscountInfo } from "@/lib/coupon-calculator";
+import { calculateDiscounts, validateCoupon } from "@/lib/coupon-calculator";
 import { z } from "zod";
+import jwt from "jsonwebtoken";
 
 const calculateSchema = z.object({
   items: z.array(z.object({
@@ -16,7 +17,10 @@ const calculateSchema = z.object({
 const validateSchema = z.object({
   code: z.string().min(1),
   subtotal: z.number().min(0),
+  itemCount: z.number().min(1).default(1),
 });
+
+const JWT_SECRET = process.env.JWT_SECRET || "fallback-super-secret-key-for-dev";
 
 // POST /api/coupons/calculate - Calculate discounts for cart
 export async function POST(request: NextRequest) {
@@ -24,6 +28,19 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const validatedData = calculateSchema.parse(body);
     
+    // Securely extract Lucky Draw token from HttpOnly cookie
+    const token = request.cookies.get("veloria_lucky_draw")?.value;
+    let luckyDrawDiscount: number | undefined;
+    
+    if (token) {
+      try {
+        const decoded = jwt.verify(token, JWT_SECRET) as { discount: number };
+        luckyDrawDiscount = decoded.discount;
+      } catch (err) {
+        // Invalid or expired token: ignore and luckyDrawDiscount remains undefined
+      }
+    }
+
     const calculation = calculateDiscounts({
       items: validatedData.items.map(item => ({
         ...item,
@@ -33,6 +50,7 @@ export async function POST(request: NextRequest) {
       })),
       appliedCouponCodes: validatedData.appliedCouponCodes,
       isPrepaid: validatedData.isPrepaid,
+      luckyDrawDiscount,
     });
     
     return NextResponse.json({
@@ -55,32 +73,4 @@ export async function POST(request: NextRequest) {
   }
 }
 
-// GET /api/coupons/validate?code=ABC&subtotal=1000
-export async function GET(request: NextRequest) {
-  try {
-    const searchParams = request.nextUrl.searchParams;
-    const code = searchParams.get("code");
-    const subtotal = parseFloat(searchParams.get("subtotal") || "0");
-    
-    if (!code) {
-      return NextResponse.json(
-        { success: false, error: "Coupon code is required" },
-        { status: 400 }
-      );
-    }
-    
-    const result = validateCoupon(code, subtotal);
-    
-    return NextResponse.json({
-      success: result.valid,
-      coupon: result.coupon,
-      error: result.error,
-    });
-  } catch (error) {
-    console.error("Coupon validation error:", error);
-    return NextResponse.json(
-      { success: false, error: "Failed to validate coupon" },
-      { status: 500 }
-    );
-  }
-}
+

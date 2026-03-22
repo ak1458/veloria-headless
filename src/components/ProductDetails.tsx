@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo, useCallback } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { useCartStore } from "@/store/cart";
@@ -14,23 +14,79 @@ interface ProductDetailsProps {
   variations: WCProduct[];
 }
 
-const colorMap: Record<string, string> = {
-  "aria brown": "#734e3e",
-  "burgundy": "#570c1b",
-  "teal green": "#1c4942",
-  "black": "#1a1a1b",
-  "brown": "#8b5a2c",
-  "tan": "#d2b48c",
-  "red": "#e62222",
-};
+/* ─────────────────────────── Variation helpers ─────────────────────────── */
 
-const getSwatchColor = (colorName: string) => {
-  const normalized = colorName.toLowerCase();
-  for (const [key, value] of Object.entries(colorMap)) {
-    if (normalized.includes(key)) return value;
+interface VariationOption {
+  id: number;
+  color: string;
+  /** The variation's own featured image from WC REST API (image.src) */
+  swatchImage: string;
+  price: string;
+  regularPrice: string;
+  salePrice: string;
+  onSale: boolean;
+  stockStatus: string;
+  product: WCProduct;
+}
+
+/**
+ * Build variation options from WC REST API data.
+ * WooCommerce variations expose a single `image` object (not `images` array).
+ * Each variation's image is its own featured/swatch image.
+ */
+function buildVariationOptions(variations: WCProduct[]): VariationOption[] {
+  return variations
+    .map((v) => {
+      const colorAttr = v.attributes.find(
+        (a) =>
+          a.slug === "pa_color" ||
+          a.name.toLowerCase().includes("color") ||
+          a.name.toLowerCase().includes("colour")
+      );
+      if (!colorAttr?.option) return null;
+
+      // WC REST API v3: variation response has `image` (singular object)
+      // with { id, src, ... }.  We also fallback to `images[0]` if present.
+      const img = v.image?.src || v.images?.[0]?.src || "";
+
+      return {
+        id: v.id,
+        color: colorAttr.option,
+        swatchImage: img,
+        price: v.price,
+        regularPrice: v.regular_price,
+        salePrice: v.sale_price,
+        onSale: v.on_sale,
+        stockStatus: v.stock_status,
+        product: v,
+      } satisfies VariationOption;
+    })
+    .filter(Boolean) as VariationOption[];
+}
+
+/**
+ * Build the image gallery for the current state.
+ *
+ * Each WooCommerce variation has its OWN full `images[]` array containing
+ * multiple angle shots of that specific color. When a variation is selected,
+ * we simply show that variation's images. Simple.
+ */
+function buildGallery(
+  product: WCProduct,
+  selectedVariation: WCProduct | null
+): { id: number; src: string; alt: string }[] {
+  const fallback = [{ id: 0, src: "/images/bag-placeholder.svg", alt: product.name }];
+
+  if (selectedVariation && selectedVariation.images?.length > 0) {
+    // Show the selected variant's own gallery (all angles of this color)
+    return selectedVariation.images;
   }
-  return "#e2e8f0"; 
-};
+
+  // No variation selected → show parent product images
+  return product.images?.length > 0 ? product.images : fallback;
+}
+
+/* ════════════════════════════ Component ════════════════════════════ */
 
 export default function ProductDetails({ product, variations }: ProductDetailsProps) {
   const [selectedImage, setSelectedImage] = useState(0);
@@ -39,58 +95,23 @@ export default function ProductDetails({ product, variations }: ProductDetailsPr
   const [selectedVariation, setSelectedVariation] = useState<WCProduct | null>(null);
   const [thumbsIndex, setThumbsIndex] = useState(0);
 
-
   const addItem = useCartStore((state) => state.addItem);
   const openCart = useCartStore((state) => state.openCart);
   const { isInWishlist, toggleItem } = useWishlistStore();
-  
+
   const wishlisted = isInWishlist(product.id);
-  
-  // Get variation options for color swatches FIRST
-  const variationOptions = variations.map(v => {
-    const colorAttr = v.attributes.find(a => a.slug === "pa_color" || a.name.toLowerCase().includes("color"));
-    // WooCommerce variations have image in meta or images array
-    const variationImage = v.images?.[0]?.src || product.images?.[0]?.src || "/images/bag-placeholder.svg";
-    return {
-      id: v.id,
-      color: colorAttr?.option || "",
-      slug: v.slug,
-      image: variationImage,
-      price: v.price,
-      product: v,
-    };
-  }).filter(v => v.color);
 
-  // Parent product images — these are always the gallery source of truth
-  // WooCommerce returns images in the order set by the admin (cover image first)
-  const parentImages = product.images?.length > 0 
-    ? product.images 
-    : [{ id: 0, src: "/images/bag-placeholder.svg", alt: product.name }];
+  // ── Memoised data ──
+  const variationOptions = useMemo(
+    () => buildVariationOptions(variations),
+    [variations]
+  );
 
-  // Build the display gallery:
-  // - No variation selected: show parent images as-is (WooCommerce order preserved)
-  // - Variation selected: put variation's featured image first, then remaining parent images
-  const images = (() => {
-    if (!selectedVariation) return parentImages;
-    
-    // Get the variation's featured image
-    const variationImageSrc = (selectedVariation as any)?.image?.src 
-      || selectedVariation.images?.[0]?.src;
-    
-    if (!variationImageSrc) return parentImages;
-    
-    // Create the variation featured image entry
-    const variationImage = {
-      id: selectedVariation.id,
-      src: variationImageSrc,
-      alt: selectedVariation.name || product.name,
-    };
-    
-    // Append the rest of the parent gallery (skip the parent's cover image to avoid confusion)
-    const restOfGallery = parentImages.slice(1);
-    return [variationImage, ...restOfGallery];
-  })();
-    
+  const images = useMemo(
+    () => buildGallery(product, selectedVariation),
+    [product, selectedVariation]
+  );
+
   const displayProduct = selectedVariation || product;
   const price = Number(displayProduct.price || displayProduct.regular_price || 0);
   const regularPrice = Number(displayProduct.regular_price || 0);
@@ -98,29 +119,41 @@ export default function ProductDetails({ product, variations }: ProductDetailsPr
   const categoryName = product.categories?.[0]?.name || "Luxury Bag";
   const categorySlug = product.categories?.[0]?.slug || "bags";
 
-  const handlePrevImage = () => {
+  // ── Handlers ──
+  const handlePrevImage = useCallback(() => {
     setSelectedImage((prev) => (prev === 0 ? images.length - 1 : prev - 1));
-  };
+  }, [images.length]);
 
-  const handleNextImage = () => {
+  const handleNextImage = useCallback(() => {
     setSelectedImage((prev) => (prev === images.length - 1 ? 0 : prev + 1));
-  };
+  }, [images.length]);
 
-  const handleVariationSelect = (variation: typeof variationOptions[0]) => {
-    setSelectedImage(0);
-    setThumbsIndex(0); // Reset slider bounds
-    if (selectedVariation?.id === variation.id) {
-      setSelectedVariation(null);
-    } else {
-      setSelectedVariation(variation.product);
-    }
-  };
+  /** Click a thumbnail → just navigate to that image (all same color) */
+  const handleThumbnailClick = useCallback(
+    (index: number) => setSelectedImage(index),
+    []
+  );
 
-  const handleClearVariation = () => {
+  const handleVariationSelect = useCallback(
+    (option: VariationOption) => {
+      // Toggle off if same variation clicked again
+      if (selectedVariation?.id === option.id) {
+        setSelectedVariation(null);
+      } else {
+        setSelectedVariation(option.product);
+      }
+      // Always reset gallery position for instant feel
+      setSelectedImage(0);
+      setThumbsIndex(0);
+    },
+    [selectedVariation]
+  );
+
+  const handleClearVariation = useCallback(() => {
     setSelectedVariation(null);
     setSelectedImage(0);
     setThumbsIndex(0);
-  };
+  }, []);
 
   const handleAddToCart = () => {
     addItem({
@@ -157,7 +190,7 @@ export default function ProductDetails({ product, variations }: ProductDetailsPr
     <div className="min-h-screen bg-[#faf8f5]">
       {/* Main Product Section */}
       <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-5 min-h-screen bg-[#faf8f5] px-4 md:px-6">
-        {/* Image Gallery */}
+        {/* ─────────── Image Gallery ─────────── */}
         <div className="lg:col-span-7 bg-[#faf8f5] p-4">
           <div className="flex flex-col md:flex-row gap-4">
             {/* Desktop Thumbnails (Vertical Slider) */}
@@ -176,8 +209,8 @@ export default function ProductDetails({ product, variations }: ProductDetailsPr
                     const globalIndex = thumbsIndex + i; 
                     return (
                       <button
-                        key={globalIndex}
-                        onClick={() => setSelectedImage(globalIndex)}
+                        key={`thumb-${globalIndex}-${image.src}`}
+                        onClick={() => handleThumbnailClick(globalIndex)}
                         className={`aspect-square w-full bg-white overflow-hidden border-2 transition-all relative ${
                           selectedImage === globalIndex 
                             ? "border-[#b59a5c]" 
@@ -209,10 +242,11 @@ export default function ProductDetails({ product, variations }: ProductDetailsPr
             {/* Main Featured Image Container */}
             <div className="flex-1 relative aspect-square flex items-center justify-center overflow-hidden group">
               <Image
+                key={images[selectedImage]?.src}
                 src={images[selectedImage]?.src}
                 alt={images[selectedImage]?.alt || product.name}
                 fill
-                className="object-cover transition-transform duration-500 group-hover:scale-105"
+                className="object-cover"
                 sizes="(max-width: 768px) 100vw, 60vw"
                 priority
               />
@@ -241,8 +275,8 @@ export default function ProductDetails({ product, variations }: ProductDetailsPr
             <div className="flex md:hidden gap-2 overflow-x-auto px-1 pb-4 pt-4 scrollbar-hide">
               {images.map((image, index) => (
                 <button
-                  key={index}
-                  onClick={() => setSelectedImage(index)}
+                  key={`mobile-${index}-${image.src}`}
+                  onClick={() => handleThumbnailClick(index)}
                   className={`flex-shrink-0 w-20 h-20 bg-white rounded-lg overflow-hidden border-2 transition-all relative ${
                     selectedImage === index 
                       ? "border-[#b59a5c]" 
@@ -262,7 +296,7 @@ export default function ProductDetails({ product, variations }: ProductDetailsPr
           )}
         </div>
 
-        {/* Product Info - Sticky sidebar */}
+        {/* ─────────── Product Info – Sticky sidebar ─────────── */}
         <div className="lg:col-span-5 lg:sticky lg:top-20 lg:h-[calc(100vh-80px)] lg:overflow-y-auto px-4 py-8 md:p-12 md:px-16 bg-[#faf8f5] flex flex-col">
           {/* Breadcrumb */}
           <nav className="flex items-center text-sm mb-4">
@@ -320,50 +354,74 @@ export default function ProductDetails({ product, variations }: ProductDetailsPr
             )}
           </div>
 
-          {/* Color Selection with Image Swatches */}
+          {/* ─── Image Swatches (Product images, NOT plain colors) ─── */}
           {variationOptions.length > 0 && (
             <div className="mb-5">
               <div className="flex items-center gap-2 mb-3">
                 <span className="text-sm font-medium text-gray-700">color:</span>
-                <span className="text-sm text-gray-900">{selectedVariation?.attributes.find(a => a.slug === "pa_color")?.option || variationOptions[0]?.color}</span>
+                <span className="text-sm text-gray-900">
+                  {selectedVariation
+                    ? selectedVariation.attributes.find((a) => a.slug === "pa_color")?.option
+                    : variationOptions[0]?.color}
+                </span>
               </div>
               
-              {/* Image Swatches */}
-              <div className="flex flex-wrap items-center gap-2 mb-2">
-                {variationOptions.map((option) => (
-                  <button
-                    key={option.id}
-                    onClick={() => handleVariationSelect(option)}
-                    className={`relative w-12 h-12 md:w-14 md:h-14 rounded overflow-hidden border-2 transition-all ${
-                      selectedVariation?.id === option.id
-                        ? "border-[#b59a5c] ring-1 ring-[#b59a5c]/30" 
-                        : "border-gray-200 hover:border-gray-400"
-                    }`}
-                    title={option.color}
-                  >
-                    <Image
-                      src={option.image}
-                      alt={option.color}
-                      fill
-                      className="object-cover"
-                      sizes="56px"
-                    />
-                    {selectedVariation?.id === option.id && (
-                      <div className="absolute inset-0 bg-black/10 flex items-center justify-center z-10">
-                        <Check size={14} className="text-white drop-shadow-md" />
-                      </div>
-                    )}
-                  </button>
-                ))}
+              {/* Image Swatches – each swatch shows the variant's own product image */}
+              <div className="flex flex-wrap items-center gap-3 mb-2">
+                {variationOptions.map((option) => {
+                  const isSelected = selectedVariation?.id === option.id;
+                  return (
+                    <button
+                      key={option.id}
+                      onClick={() => handleVariationSelect(option)}
+                      className={`group relative w-12 h-12 md:w-14 md:h-14 rounded-full overflow-hidden transition-all duration-200 ${
+                        isSelected
+                          ? "ring-2 ring-[#b59a5c] ring-offset-2 ring-offset-[#faf8f5] scale-110" 
+                          : "ring-1 ring-gray-200 hover:scale-105 hover:ring-2 hover:ring-gray-300 hover:ring-offset-2 hover:ring-offset-[#faf8f5]"
+                      }`}
+                      title={option.color}
+                    >
+                      {/* Swatch product image */}
+                      {option.swatchImage ? (
+                        <Image
+                          src={option.swatchImage}
+                          alt={option.color}
+                          fill
+                          className="object-cover"
+                          sizes="56px"
+                        />
+                      ) : (
+                        /* Fallback: gray circle if no image for some reason */
+                        <span className="block w-full h-full bg-gray-200" />
+                      )}
+                      
+                      {/* Selected checkmark overlay */}
+                      {isSelected && (
+                        <span className="absolute inset-0 flex items-center justify-center bg-black/25">
+                          <Check 
+                            size={16} 
+                            className="text-white drop-shadow-md" 
+                            strokeWidth={3}
+                          />
+                        </span>
+                      )}
+                      
+                      {/* Tooltip on hover */}
+                      <span className="absolute -bottom-8 left-1/2 -translate-x-1/2 px-2 py-1 bg-gray-800 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-20">
+                        {option.color}
+                      </span>
+                    </button>
+                  );
+                })}
               </div>
               
               {/* Clear Button */}
               {selectedVariation && (
                 <button 
                   onClick={handleClearVariation}
-                  className="text-xs text-gray-500 hover:text-[#b59a5c] flex items-center gap-1"
+                  className="text-xs text-gray-500 hover:text-[#b59a5c] flex items-center gap-1 mt-2"
                 >
-                  <span>×</span> Clear
+                  <span>×</span> Clear selection
                 </button>
               )}
             </div>

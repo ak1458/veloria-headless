@@ -16,7 +16,7 @@ interface CouponState {
   clearCoupons: () => void;
   setIsPrepaid: (isPrepaid: boolean) => void;
   calculateDiscounts: (items: CartItem[]) => Promise<void>;
-  validateCoupon: (code: string, subtotal: number) => Promise<{ valid: boolean; error?: string }>;
+  validateCoupon: (code: string, subtotal: number, itemCount: number) => Promise<{ valid: boolean; error?: string }>;
 }
 
 export const useCouponStore = create<CouponState>()(
@@ -38,7 +38,8 @@ export const useCouponStore = create<CouponState>()(
 
         // Validate coupon
         const subtotal = calculation?.originalSubtotal || 0;
-        const validation = await get().validateCoupon(code, subtotal);
+        const itemCount = calculation?.itemCount || 1; // Default to 1 if not available, though in cart it should be
+        const validation = await get().validateCoupon(code, subtotal, itemCount);
         
         if (!validation.valid) {
           return { success: false, error: validation.error };
@@ -108,10 +109,10 @@ export const useCouponStore = create<CouponState>()(
         }
       },
 
-      validateCoupon: async (code: string, subtotal: number) => {
+      validateCoupon: async (code: string, subtotal: number, itemCount: number) => {
         try {
           const response = await fetch(
-            `/api/coupons/validate?code=${encodeURIComponent(code)}&subtotal=${subtotal}`
+            `/api/coupons/validate?code=${encodeURIComponent(code)}&subtotal=${subtotal}&itemCount=${itemCount}`
           );
           const data = await response.json();
           return { valid: data.success, error: data.error };

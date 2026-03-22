@@ -4,16 +4,9 @@ import { useState, useEffect } from "react";
 import { Tag, X, Loader2, Check, Sparkles } from "lucide-react";
 import { useCouponStore } from "@/store/cart-coupon";
 import { useCartStore } from "@/store/cart";
-import { getTierDiscountInfo } from "@/lib/coupon-calculator";
 
 export default function CouponSection() {
   const [couponInput, setCouponInput] = useState("");
-  const [tierInfo, setTierInfo] = useState<{
-    currentTier: string | null;
-    nextTier: string | null;
-    itemsNeededForNext: number;
-    discountPercent: number;
-  } | null>(null);
   
   const { 
     appliedCouponCodes, 
@@ -26,13 +19,6 @@ export default function CouponSection() {
   } = useCouponStore();
   
   const { items } = useCartStore();
-  const itemCount = items.reduce((sum, item) => sum + item.quantity, 0);
-
-  // Calculate tier info
-  useEffect(() => {
-    const info = getTierDiscountInfo(itemCount);
-    setTierInfo(info);
-  }, [itemCount]);
 
   // Recalculate discounts when items or coupons change
   useEffect(() => {
@@ -55,37 +41,23 @@ export default function CouponSection() {
     <div className="bg-white p-6 rounded-xl border border-gray-100 shadow-sm">
       <h3 className="font-serif text-lg text-gray-800 mb-4">Discounts & Offers</h3>
       
-      {/* Tier Discount Banner */}
-      {tierInfo?.currentTier && (
-        <div className="mb-4 p-3 bg-gradient-to-r from-[#b59a5c]/10 to-[#b59a5c]/5 border border-[#b59a5c]/20 rounded-lg">
-          <div className="flex items-center gap-2">
-            <Sparkles className="w-4 h-4 text-[#b59a5c]" />
-            <span className="text-sm font-medium text-gray-800">
-              Active: {tierInfo.currentTier}
-            </span>
-          </div>
-          <p className="text-xs text-gray-500 mt-1 ml-6">
-            {tierInfo.discountPercent}% off applied automatically
-          </p>
+      {/* Available Offers Banner */}
+      <div className="mb-4 p-4 bg-gradient-to-r from-[#b59a5c]/10 to-[#b59a5c]/5 border border-[#b59a5c]/20 rounded-lg space-y-2">
+        <div className="flex items-center gap-2 mb-1">
+          <Sparkles className="w-4 h-4 text-[#b59a5c]" />
+          <span className="text-sm font-medium text-gray-800">
+            Available Offers
+          </span>
         </div>
-      )}
-
-      {/* Next Tier Progress */}
-      {tierInfo?.nextTier && tierInfo.itemsNeededForNext > 0 && (
-        <div className="mb-4 p-3 bg-gray-50 rounded-lg">
-          <p className="text-sm text-gray-600">
-            Add <span className="font-semibold text-[#b59a5c]">{tierInfo.itemsNeededForNext}</span> more item
-            {tierInfo.itemsNeededForNext > 1 ? "s" : ""} to unlock{" "}
-            <span className="font-medium">{tierInfo.nextTier}</span>
-          </p>
-          <div className="mt-2 h-2 bg-gray-200 rounded-full overflow-hidden">
-            <div 
-              className="h-full bg-[#b59a5c] transition-all duration-300"
-              style={{ width: `${(itemCount / (itemCount + tierInfo.itemsNeededForNext)) * 100}%` }}
-            />
-          </div>
-        </div>
-      )}
+        <ul className="text-sm text-gray-600 space-y-1.5 ml-6 list-disc">
+          <li>
+            Use code <strong className="text-gray-800 tracking-wide">FLAT15</strong> to get <span className="text-[#b59a5c] font-medium">15% Off</span>
+          </li>
+          <li>
+            Buy 2 or more & use code <strong className="text-gray-800 tracking-wide">FLAT20</strong> to get <span className="text-[#b59a5c] font-medium">20% Off</span>
+          </li>
+        </ul>
+      </div>
 
       {/* Coupon Input */}
       <div className="flex gap-2 mb-4">
@@ -96,7 +68,7 @@ export default function CouponSection() {
             value={couponInput}
             onChange={(e) => setCouponInput(e.target.value.toUpperCase())}
             onKeyDown={handleKeyDown}
-            placeholder="Enter coupon code (e.g., ABC)"
+            placeholder="Enter coupon code"
             className="w-full pl-10 pr-4 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-[#b59a5c] uppercase"
             disabled={isLoading}
           />
@@ -125,7 +97,7 @@ export default function CouponSection() {
             return (
               <div
                 key={code}
-                className="flex items-center justify-between p-2 bg-green-50 border border-green-100 rounded-lg"
+                className="flex items-center justify-between p-3 bg-green-50 border border-green-100 rounded-lg"
               >
                 <div className="flex items-center gap-2">
                   <Check className="w-4 h-4 text-green-600" />
@@ -148,13 +120,6 @@ export default function CouponSection() {
             );
           })}
         </div>
-      )}
-
-      {/* Available Coupons Hint */}
-      {appliedCouponCodes.length === 0 && (
-        <p className="text-xs text-gray-400">
-          Try codes: <span className="font-medium text-gray-600">ABC</span> for 5% off
-        </p>
       )}
     </div>
   );

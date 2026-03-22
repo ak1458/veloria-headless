@@ -11,6 +11,7 @@ import { useCartStore } from "@/store/cart";
 import { useCouponStore } from "@/store/cart-coupon";
 import OrderSummary from "@/components/OrderSummary";
 import CouponSection from "@/components/CouponSection";
+import { SpinWheel } from "@/components/SpinWheel";
 
 const checkoutSchema = z.object({
   email: z.string().email("Please enter a valid email"),
@@ -378,7 +379,7 @@ export default function CheckoutPage() {
             </form>
           </div>
 
-          {/* Summary Side */}
+            {/* Summary Side */}
           <div className="lg:col-span-5 space-y-4 hidden lg:block">
             <OrderSummary />
             <CouponSection />
@@ -386,6 +387,7 @@ export default function CheckoutPage() {
 
         </div>
       </div>
+      <SpinWheel />
     </div>
   );
 }

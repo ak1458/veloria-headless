@@ -8,28 +8,46 @@ const loginSchema = z.object({
   password: z.string().min(1, "Password is required"),
 });
 
+const WP_API_URL = process.env.WC_API_URL?.replace("/wc/v3", "");
+
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
     const validatedData = loginSchema.parse(body);
 
-    // Get customer from WooCommerce
-    const customer = await getCustomerByEmail(validatedData.email);
+    // Step 1: Verify password with WordPress JWT endpoint
+    const jwtResponse = await fetch(`${WP_API_URL}/jwt-auth/v1/token`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        username: validatedData.email,
+        password: validatedData.password,
+      }),
+    });
 
-    if (!customer) {
+    if (!jwtResponse.ok) {
+      const errorData = await jwtResponse.json().catch(() => ({}));
       return NextResponse.json(
-        { success: false, error: "Invalid email or password" },
+        { success: false, error: errorData.message || "Invalid email or password" },
         { status: 401 }
       );
     }
 
-    // Note: WooCommerce REST API doesn't provide password verification
-    // In production, use a plugin like "JWT Authentication for WP REST API"
-    // or verify against your own auth system
-    // For now, we assume the password is valid if customer exists
-    // THIS IS NOT SECURE FOR PRODUCTION - implement proper password verification
+    const jwtData = await jwtResponse.json();
 
-    // Generate JWT token
+    // Step 2: Get customer details from WooCommerce
+    const customer = await getCustomerByEmail(validatedData.email);
+
+    if (!customer) {
+      return NextResponse.json(
+        { success: false, error: "Customer account not found" },
+        { status: 404 }
+      );
+    }
+
+    // Step 3: Generate our own JWT token
     const token = generateToken({
       userId: customer.id,
       email: customer.email,
@@ -49,6 +67,7 @@ export async function POST(request: NextRequest) {
       },
     });
 
+    // Set HTTP-only cookie
     response.cookies.set({
       name: "token",
       value: token,

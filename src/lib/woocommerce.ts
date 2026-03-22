@@ -43,7 +43,8 @@ export interface WCProduct {
   regular_price: string;
   sale_price: string;
   on_sale: boolean;
-  images: WCImage[];
+  image?: WCImage;         // WC REST API v3: singular image object (used by variations)
+  images: WCImage[];        // WC REST API v3: image gallery array (used by parent products)
   categories: WCCategory[];
   average_rating: string;
   rating_count: number;
@@ -202,11 +203,31 @@ export async function getProductBySlug(slug: string): Promise<WCProduct | null> 
 
 export async function getProductVariations(productId: number): Promise<WCProduct[]> {
   try {
-    return await wcFetch<WCProduct[]>(`/products/${productId}/variations`, {
+    const variations = await wcFetch<WCProduct[]>(`/products/${productId}/variations`, {
       per_page: 100,
       orderby: "menu_order",
       order: "asc",
     });
+
+    // WC variations endpoint only returns a singular `image`, not the full `images[]` gallery.
+    // Each variation also exists as a product with a full images array (multiple angles).
+    // Fetch each variation as a product in parallel to get the complete gallery.
+    const enriched = await Promise.all(
+      variations.map(async (variation) => {
+        try {
+          const fullProduct = await wcFetch<WCProduct>(`/products/${variation.id}`);
+          return {
+            ...variation,
+            images: fullProduct.images || [],
+          };
+        } catch {
+          // If individual fetch fails, keep the variation as-is
+          return variation;
+        }
+      })
+    );
+
+    return enriched;
   } catch (error) {
     console.error("Error fetching product variations:", error);
     return [];
@@ -404,3 +425,30 @@ export function getRelativeProductLink(product: WCProduct, parentSlug?: string):
   const colorValue = getVariationQueryValue(product);
   return colorValue ? `/product/${slug}?attribute_pa_color=${colorValue}` : `/product/${slug}`;
 }
+
+export interface WCCoupon {
+  id: number;
+  code: string;
+  amount: string;
+  discount_type: "percent" | "fixed_cart" | "fixed_product";
+  description: string;
+  date_expires: string | null;
+  usage_limit: number | null;
+  usage_count: number;
+  minimum_amount: string;
+  maximum_amount: string;
+  product_ids: number[];
+  excluded_product_ids: number[];
+  customer_emails: string[];
+}
+
+export async function getCouponByCode(code: string): Promise<WCCoupon | null> {
+  try {
+    const coupons = await wcFetch<WCCoupon[]>("/coupons", { code });
+    return coupons.length > 0 ? coupons[0] : null;
+  } catch (error) {
+    console.error("Error fetching coupon by code:", error);
+    return null;
+  }
+}
+
