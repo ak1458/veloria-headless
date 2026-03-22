@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { Star } from "lucide-react";
 import type { WCReview } from "@/lib/woocommerce";
+import DOMPurify from "isomorphic-dompurify";
 
 interface ProductReviewsProps {
   productId: number;
@@ -125,7 +126,7 @@ export default function ProductReviews({
             
             <div 
               className="text-gray-600 text-sm leading-relaxed"
-              dangerouslySetInnerHTML={{ __html: review.review }}
+              dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(review.review) }}
             />
             
             {review.verified && (

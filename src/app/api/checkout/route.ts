@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { calculateDiscounts } from "@/lib/coupon-calculator";
+import { getProductsByIds } from "@/lib/woocommerce";
+import { verifyToken } from "@/lib/auth/jwt";
+import jwt from "jsonwebtoken";
 
 const checkoutSchema = z.object({
   email: z.string().email("Invalid email address"),
@@ -57,36 +60,63 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Recalculate to ensure totals are correct
-    const calculation = calculateDiscounts({
-      items: validatedData.items.map(item => ({
-        ...item,
-        slug: "",
-        image: "",
-        category: "",
-      })),
-      appliedCouponCodes: validatedData.couponCodes,
-      isPrepaid: validatedData.isPrepaid,
+    // Fetch real products from WooCommerce to prevent price manipulation
+    const productIds = validatedData.items.map(i => i.id);
+    const realProducts = await getProductsByIds(productIds);
+    
+    // Map real prices to items
+    const secureItems = validatedData.items.map(clientItem => {
+      const realProduct = realProducts.find(p => p.id === clientItem.id);
+      if (!realProduct) {
+        throw new Error(`Product ${clientItem.id} not found`);
+      }
+      return {
+        ...clientItem,
+        price: parseFloat(realProduct.price || realProduct.regular_price || "0"),
+        slug: "", image: "", category: ""
+      };
     });
 
-    // Prepare coupon lines for WooCommerce
-    const couponLines = validatedData.couponCodes.map((code) => ({
-      code: code,
+    let customerId = 0;
+    
+    // Check for Lucky Draw token and Auth token
+    let luckyDrawDiscount = 0;
+    
+    const luckyToken = request.cookies.get("veloria_lucky_draw")?.value;
+    if (luckyToken) {
+      try {
+        const secret = process.env.JWT_SECRET as string;
+        const decoded = jwt.verify(luckyToken, secret) as { discount: number };
+        luckyDrawDiscount = decoded.discount;
+      } catch {
+        // ignore invalid/expired lucky draw token
+      }
+    }
+
+    const authToken = request.cookies.get("token")?.value;
+    if (authToken) {
+      try {
+        const payload = await verifyToken(authToken);
+        if (payload?.userId) {
+          customerId = payload.userId as number;
+        }
+      } catch {
+        // Not authenticated
+      }
+    }
+
+    // Recalculate to ensure totals are correct
+    const calculation = calculateDiscounts({
+      items: secureItems,
+      appliedCouponCodes: validatedData.couponCodes,
+      isPrepaid: validatedData.isPrepaid,
+      luckyDrawDiscount
+    });
+
+    // Prepare coupon lines for WooCommerce based ONLY on successfully verified local coupons
+    const couponLines = calculation.appliedCoupons.map((c) => ({
+      code: c.coupon.code,
     }));
-
-    // Add automatic tier discount as a coupon if applicable
-    if (calculation.tierDiscount > 0) {
-      couponLines.push({
-        code: calculation.itemCount >= 2 ? "BUY2GET20" : "BUY1GET15",
-      });
-    }
-
-    // Add prepaid bonus as separate coupon if applicable
-    if (calculation.prepaidDiscount > 0) {
-      couponLines.push({
-        code: "PREPAID5",
-      });
-    }
 
     // Create WooCommerce order
     const orderData = {
@@ -171,7 +201,7 @@ export async function POST(request: NextRequest) {
         },
       ],
       // Add customer if exists
-      customer_id: 0, // Will be updated if user is logged in
+      customer_id: customerId,
     };
 
     const response = await fetch(`${WC_API_URL}/orders`, {

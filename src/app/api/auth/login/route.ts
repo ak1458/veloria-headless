@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { getCustomerByEmail } from "@/lib/woocommerce-customer";
 import { generateToken } from "@/lib/auth/jwt";
+import { RateLimiter } from "@/lib/rate-limit";
 
 const loginSchema = z.object({
   email: z.string().email("Please enter a valid email"),
@@ -10,8 +11,17 @@ const loginSchema = z.object({
 
 const WP_API_URL = process.env.WC_API_URL?.replace("/wc/v3", "");
 
+// Allow 5 login attempts per 15 minutes per IP
+const loginLimiter = new RateLimiter(5, 15 * 60 * 1000);
+
 export async function POST(request: NextRequest) {
   try {
+    const ip = request.headers.get("x-forwarded-for") ?? "unknown";
+    const limitResult = loginLimiter.check(ip);
+    if (!limitResult.success) {
+      return NextResponse.json({ success: false, error: "Too many login attempts. Please try again later." }, { status: 429 });
+    }
+
     const body = await request.json();
     const validatedData = loginSchema.parse(body);
 

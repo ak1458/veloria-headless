@@ -8,6 +8,7 @@ import { useWishlistStore } from "@/store/wishlist";
 import type { WCProduct } from "@/lib/woocommerce";
 import { Heart, ChevronLeft, ChevronRight, Star, Check, Minus, Plus } from "lucide-react";
 import ProductReviews from "./ProductReviews";
+import DOMPurify from "isomorphic-dompurify";
 
 interface ProductDetailsProps {
   product: WCProduct;
@@ -163,7 +164,7 @@ export default function ProductDetails({ product, variations }: ProductDetailsPr
       price,
       image: images[selectedImage]?.src || "",
       category: categoryName,
-    });
+    }, quantity);
     openCart();
   };
 
@@ -348,7 +349,7 @@ export default function ProductDetails({ product, variations }: ProductDetailsPr
           {/* Short Description */}
           <div className="text-gray-600 text-sm leading-relaxed mb-5">
             {product.short_description ? (
-              <div dangerouslySetInnerHTML={{ __html: product.short_description }} />
+              <div dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(product.short_description) }} />
             ) : (
               <p>Some bags are for special occasions. <em className="italic">{product.name}</em> is for every occasion. It&apos;s just as perfect sitting next to you at a café while you sketch on your iPad as it is on a weekend getaway.</p>
             )}
@@ -520,7 +521,7 @@ export default function ProductDetails({ product, variations }: ProductDetailsPr
             {activeTab === "description" && (
               <div className="prose prose-sm max-w-none text-gray-600 leading-relaxed">
                 {product.description ? (
-                  <div dangerouslySetInnerHTML={{ __html: product.description }} />
+                  <div dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(product.description) }} />
                 ) : (
                   <>
                     <p className="mb-4">Some bags are for special occasions. <em>{product.name}</em> is for every occasion. It&apos;s just as perfect sitting next to you at a café while you sketch on your iPad as it is on a weekend getaway.</p>

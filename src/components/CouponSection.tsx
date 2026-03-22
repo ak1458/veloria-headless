@@ -59,6 +59,14 @@ export default function CouponSection() {
         </ul>
       </div>
 
+      <div className="mb-4 p-4 bg-[#1a1a1a] rounded-lg flex items-center justify-between">
+        <div>
+          <p className="text-white text-sm font-medium">Want an extra discount?</p>
+          <p className="text-gray-400 text-xs mt-0.5">Spin the Lucky Wheel to win up to 50% off!</p>
+        </div>
+        <Sparkles className="w-6 h-6 text-[#b59a5c]" />
+      </div>
+
       {/* Coupon Input */}
       <div className="flex gap-2 mb-4">
         <div className="relative flex-1">

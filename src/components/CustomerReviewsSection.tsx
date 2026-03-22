@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { Star } from "lucide-react";
 import { WCReview } from "@/lib/woocommerce";
+import DOMPurify from "isomorphic-dompurify";
 
 // 1. CHANGE THIS URL to update the review image
 const REVIEW_EDITORIAL_IMAGE = "https://veloriavault.com/wp-content/uploads/2026/01/Bag-3-5-scaled.jpg";
@@ -69,7 +70,7 @@ export default function CustomerReviewsSection({ reviews = [] }: { reviews?: WCR
               <blockquote
                 key={currentReview.id}
                 className="text-lg lg:text-xl text-gray-600 italic mb-6 leading-relaxed border-l-4 border-[#b59a5c] pl-6 transition-opacity duration-500"
-                dangerouslySetInnerHTML={{ __html: `&ldquo;${currentReview.review}&rdquo;` }}
+                dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(`&ldquo;${currentReview.review}&rdquo;`) }}
               />
               <div className="flex items-center gap-3">
                 <p className="text-sm font-medium text-gray-900">

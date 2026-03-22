@@ -1,7 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import jwt from "jsonwebtoken";
+import { RateLimiter } from "@/lib/rate-limit";
 
-const JWT_SECRET = process.env.JWT_SECRET || "fallback-super-secret-key-for-dev";
+const JWT_SECRET = process.env.JWT_SECRET as string;
+
+if (!JWT_SECRET) {
+  throw new Error("FATAL: JWT_SECRET environment variable is not set.");
+}
 
 const OPTIONS = [
   { discount: 5, weight: 400 },   // 40% chance
@@ -22,7 +27,15 @@ function getRandomDiscount() {
   return 5;
 }
 
+// Strictly track 1 spin per 30 days per IP to prevent cookie clearing bypass
+const spinTracker = new RateLimiter(1, 30 * 24 * 60 * 60 * 1000);
+
 export async function POST(request: NextRequest) {
+  const ip = request.headers.get("x-forwarded-for") ?? "unknown";
+  
+  if (ip !== "unknown" && spinTracker.hasRecord(ip)) {
+    return NextResponse.json({ success: false, error: "You have already spun the wheel!" }, { status: 403 });
+  }
   // Check if already spun
   const token = request.cookies.get("veloria_lucky_draw")?.value;
   if (token) {
@@ -47,6 +60,11 @@ export async function POST(request: NextRequest) {
   const newToken = jwt.sign(payload, JWT_SECRET, { expiresIn: "30d" });
   
   const response = NextResponse.json({ success: true, discount });
+  
+  // Record spin for this IP
+  if (ip !== "unknown") {
+    spinTracker.check(ip);
+  }
   
   // Set HttpOnly cookie
   response.cookies.set("veloria_lucky_draw", newToken, {

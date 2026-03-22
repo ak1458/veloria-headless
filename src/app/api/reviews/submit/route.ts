@@ -42,9 +42,24 @@ export async function POST(request: NextRequest) {
     
     // Get image files
     const images: File[] = [];
+    const ALLOWED_MIME_TYPES = ["image/jpeg", "image/png", "image/webp"];
+    const MAX_FILE_SIZE = 2 * 1024 * 1024; // 2MB
+
     for (let i = 0; i < 5; i++) {
-      const file = formData.get(`image${i}`) as File;
+      const file = formData.get(`image${i}`) as File | null;
       if (file && file.size > 0) {
+        if (!ALLOWED_MIME_TYPES.includes(file.type)) {
+          return NextResponse.json(
+            { success: false, error: `Invalid file type for image${i}. Only JPG, PNG, and WebP are allowed.` },
+            { status: 400 }
+          );
+        }
+        if (file.size > MAX_FILE_SIZE) {
+          return NextResponse.json(
+            { success: false, error: `File size exceeds 2MB limit for image${i}.` },
+            { status: 400 }
+          );
+        }
         images.push(file);
       }
     }
@@ -103,7 +118,7 @@ export async function POST(request: NextRequest) {
       reviewer: validatedData.reviewer,
       reviewer_email: validatedData.reviewerEmail,
       rating: validatedData.rating,
-      verified: userId ? true : false, // Mark as verified if user is logged in
+      verified: false, // Safely do not auto-verify unless cross-referenced with WC orders
     };
 
     // Add image URLs to review metadata if any were uploaded

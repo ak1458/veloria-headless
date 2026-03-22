@@ -32,7 +32,7 @@ const steps = [
 
 export default function CheckoutPage() {
   const { items, clearCart } = useCartStore();
-  const { calculation, isPrepaid, calculateDiscounts } = useCouponStore();
+  const { calculation, isPrepaid, setIsPrepaid, calculateDiscounts } = useCouponStore();
   const [currentStep, setCurrentStep] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [orderError, setOrderError] = useState<string | null>(null);
@@ -295,8 +295,7 @@ export default function CheckoutPage() {
                         <input 
                           type="radio" 
                           checked={isPrepaid}
-                          onChange={() => {}}
-                          onClick={() => {}}
+                          onChange={() => setIsPrepaid(true)}
                           className="text-[#b59a5c]"
                         />
                         <div className="flex items-center space-x-2">
@@ -319,8 +318,7 @@ export default function CheckoutPage() {
                         <input 
                           type="radio" 
                           checked={!isPrepaid}
-                          onChange={() => {}}
-                          onClick={() => {}}
+                          onChange={() => setIsPrepaid(false)}
                           className="text-[#b59a5c]"
                         />
                         <div>

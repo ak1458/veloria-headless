@@ -108,12 +108,6 @@ export default function AccountPage() {
                   <Package size={18} />
                   Orders
                 </Link>
-                <Link
-                  href="/account/profile"
-                  className="flex items-center gap-3 px-4 py-3 text-sm font-medium text-gray-600 hover:bg-gray-50 rounded-lg transition-colors"
-                >
-                  <User size={18} />
-                  Profile
                 </Link>
                 <button
                   onClick={handleLogout}
@@ -131,12 +125,7 @@ export default function AccountPage() {
             <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-6">
               <div className="flex items-center justify-between mb-6">
                 <h2 className="text-xl font-serif text-gray-900">Recent Orders</h2>
-                <Link
-                  href="/account/orders"
-                  className="text-sm text-[#b59a5c] hover:underline"
-                >
-                  View All
-                </Link>
+                <h2 className="text-xl font-serif text-gray-900">Recent Orders</h2>
               </div>
 
               {orders.length === 0 ? (
@@ -184,12 +173,9 @@ export default function AccountPage() {
                           <span className="font-semibold text-gray-900">
                             ₹{parseFloat(order.total).toLocaleString("en-IN")}
                           </span>
-                          <Link
-                            href={`/account/orders/${order.id}`}
-                            className="text-[#b59a5c] hover:underline"
-                          >
+                          <span className="text-[#b59a5c]">
                             <ChevronRight size={18} />
-                          </Link>
+                          </span>
                         </div>
                       </div>
                     </div>

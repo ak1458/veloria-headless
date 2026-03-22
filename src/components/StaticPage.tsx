@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import { getPageBySlug } from "@/lib/wordpress";
+import DOMPurify from "isomorphic-dompurify";
 
 interface StaticPageProps {
   slug: string;
@@ -28,7 +29,7 @@ export default async function StaticPage({ slug, title }: StaticPageProps) {
       <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-12 md:py-16">
         <div 
           className="prose prose-lg max-w-4xl mx-auto prose-headings:font-serif prose-a:text-[#b59a5c] hover:prose-a:text-[#a08a4f]"
-          dangerouslySetInnerHTML={{ __html: page.content.rendered }}
+          dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(page.content.rendered) }}
         />
       </div>
     </div>
