@@ -108,7 +108,6 @@ export default function AccountPage() {
                   <Package size={18} />
                   Orders
                 </Link>
-                </Link>
                 <button
                   onClick={handleLogout}
                   className="w-full flex items-center gap-3 px-4 py-3 text-sm font-medium text-red-600 hover:bg-red-50 rounded-lg transition-colors"
@@ -124,7 +123,6 @@ export default function AccountPage() {
           <div className="lg:col-span-3">
             <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-6">
               <div className="flex items-center justify-between mb-6">
-                <h2 className="text-xl font-serif text-gray-900">Recent Orders</h2>
                 <h2 className="text-xl font-serif text-gray-900">Recent Orders</h2>
               </div>
 
