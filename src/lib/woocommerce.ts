@@ -116,7 +116,7 @@ async function wcFetch<T>(
   const auth = Buffer.from(`${CONSUMER_KEY}:${CONSUMER_SECRET}`).toString("base64");
 
   const finalUrl = url.toString();
-  console.log(`[wcFetch] FETCHING: ${finalUrl}`);
+  console.log(`[wcFetch] FETCHING: ${finalUrl} (cache: no-store)`);
 
   const response = await fetch(finalUrl, {
     method: 'GET',
@@ -124,7 +124,7 @@ async function wcFetch<T>(
       "Authorization": `Basic ${auth}`,
       "Accept": "application/json",
     },
-    next: { revalidate: 3600 }, // Increase revalidate for stability
+    cache: "no-store", // Ensure fresh data
   });
 
   if (!response.ok) {
