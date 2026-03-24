@@ -108,14 +108,14 @@ async function wcFetch<T>(
     }
   });
 
-  // Use Query String Authentication to bypass some server header blocks
-  url.searchParams.set("consumer_key", CONSUMER_KEY || "");
-  url.searchParams.set("consumer_secret", CONSUMER_SECRET || "");
+  // Remove newlines and use standard Basic Auth header
+  const auth = Buffer.from(`${CONSUMER_KEY?.trim()}:${CONSUMER_SECRET?.trim()}`).toString("base64");
 
-  console.log(`[wcFetch] Fetching ${url.toString()} (clean query-string auth)`);
+  console.log(`[wcFetch] Fetching ${url.toString()} (Headers Auth, Key length: ${CONSUMER_KEY?.trim().length})`);
 
   const response = await fetch(url.toString(), {
     headers: {
+      "Authorization": `Basic ${auth}`,
       "Content-Type": "application/json",
       "User-Agent": "Veloria-Vault-NextJS",
     },
