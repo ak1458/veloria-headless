@@ -279,42 +279,39 @@ export async function getVariationProducts(options: {
   categorySlug?: string;
   search?: string;
 } = {}): Promise<WCProduct[]> {
-  const products = await getProducts({
-    per_page: 100,
-    type: "variation",
-    search: options.search,
-    orderby: "menu_order",
-    order: "asc",
-  });
-
-  // Create a map of parent_id to parent slug for linking
-  const parentSlugMap = new Map<number, string>();
-  products
-    .filter((p) => p.parent_id === 0)
-    .forEach((p) => parentSlugMap.set(p.id, p.slug));
-
-  const variations = products
-    .filter((product) => product.type === "variation")
-    .filter((product) => {
-      if (!options.categorySlug) {
-        return true;
-      }
-
-      return product.categories.some((category) => category.slug === options.categorySlug);
-    })
-    .map((variation) => {
-      // Ensure variation has proper permalink with parent slug
-      const parentSlug = parentSlugMap.get(variation.parent_id);
-      if (parentSlug && !variation.permalink.includes(parentSlug)) {
-        // Build proper permalink if API doesn't provide it
-        const colorAttr = variation.attributes.find((a) => a.slug === "pa_color");
-        const colorValue = colorAttr ? encodeURIComponent(colorAttr.option.toLowerCase().replace(/\s+/g, "-")) : "";
-        variation.permalink = `https://veloriavault.com/product/${parentSlug}/${colorValue ? `?attribute_pa_color=${colorValue}` : ""}`;
-      }
-      return variation;
+  try {
+    // 1. Fetch parent products (variable bags) that match the search/category
+    const parents = await getParentProducts({
+      per_page: 100,
+      categorySlug: options.categorySlug,
+      search: options.search,
     });
 
-  return variations;
+    if (!parents.length) {
+      console.log("[getVariationProducts] No parent products found for filter.");
+      return [];
+    }
+
+    // 2. Fetch variations for each parent in parallel
+    const variationsArrays = await Promise.all(
+      parents.map(async (parent) => {
+        const variations = await getProductVariations(parent.id);
+        // Map parent slug to variations for linking
+        return variations.map(v => ({
+          ...v,
+          parent_slug: parent.slug, // Helper for linking
+          categories: parent.categories, // Inherit categories for filtering
+        }));
+      })
+    );
+
+    const variations = variationsArrays.flat();
+    console.log(`[getVariationProducts] Found ${variations.length} variations total.`);
+    return variations;
+  } catch (error) {
+    console.error("Error in getVariationProducts:", error);
+    return [];
+  }
 }
 
 export async function getParentProducts(options: {
