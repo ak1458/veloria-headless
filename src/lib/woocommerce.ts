@@ -85,6 +85,10 @@ const WC_API_URL = process.env.WC_API_URL?.trim();
 const CONSUMER_KEY = process.env.WC_CONSUMER_KEY?.trim();
 const CONSUMER_SECRET = process.env.WC_CONSUMER_SECRET?.trim();
 
+function logToFile(msg: string) {
+  // Silent fallback for client usage
+}
+
 function getAuthHeader(): string {
   return "Basic " + Buffer.from(`${CONSUMER_KEY}:${CONSUMER_SECRET}`).toString("base64");
 }
@@ -111,8 +115,9 @@ async function wcFetch<T>(
   // Use standard Basic Auth header
   const auth = Buffer.from(`${CONSUMER_KEY}:${CONSUMER_SECRET}`).toString("base64");
 
-  console.log(`[wcFetch] START: ${url.toString()}`);
-  console.log(`[wcFetch] AUTH: Basic ${auth.substring(0, 8)}...`);
+  const logMsg = `[wcFetch] START: ${url.toString()} | AUTH: Basic ${auth.substring(0, 8)}...`;
+  console.log(logMsg);
+  logToFile(logMsg);
 
   const response = await fetch(url.toString(), {
     headers: {
@@ -124,10 +129,14 @@ async function wcFetch<T>(
   });
 
   if (!response.ok) {
-    throw new Error(`WooCommerce API error: ${response.status}`);
+    const errorMsg = `WooCommerce API error: ${response.status}`;
+    logToFile(errorMsg);
+    throw new Error(errorMsg);
   }
 
-  return response.json();
+  const data = await response.json();
+  logToFile(`[wcFetch] SUCCESS: Received ${Array.isArray(data) ? data.length : "object"} items.`);
+  return data;
 }
 
 export async function getProducts(options: {
