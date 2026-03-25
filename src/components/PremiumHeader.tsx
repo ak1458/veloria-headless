@@ -25,10 +25,10 @@ const NAV_ITEMS: NavItem[] = [
       {
         title: "By Style",
         items: [
-          { label: "Tote Bags", href: "/product-category/tote-bag" },
-          { label: "Sling Bags", href: "/product-category/sling-bag" },
-          { label: "Clutch Bags", href: "/product-category/clutch" },
-          { label: "Hand Bag", href: "/product-category/hand-bag" },
+          { label: "Tote Bag", href: "/product-category/tote-bag" },
+          { label: "Sling Bag", href: "/product-category/sling-bag" },
+          { label: "Clutch", href: "/product-category/clutch" },
+          { label: "Handheld Bag", href: "/product-category/handheld-bag" },
           { label: "Crossbody", href: "/product-category/crossbody" },
           { label: "Satchel Bag", href: "/product-category/satchel-bag" },
         ]
@@ -36,9 +36,9 @@ const NAV_ITEMS: NavItem[] = [
       {
         title: "Collections",
         items: [
+          { label: "Work Bag", href: "/product-category/work-bag" },
+          { label: "Laptop Bag", href: "/product-category/laptop-bag" },
           { label: "New Arrivals", href: "/shop?new=true" },
-          { label: "Best Sellers", href: "/shop?bestseller=true" },
-          { label: "Minimalist Series", href: "/shop?collection=minimalist" },
         ]
       },
       {

@@ -5,7 +5,7 @@ import { getCategories, getVariationProducts } from "@/lib/woocommerce";
 export async function generateStaticParams() {
   const categories = await getCategories();
   return categories
-    .filter((c) => ["tote-bag", "satchel-bag", "sling-bag", "crossbody", "clutch", "wallet"].includes(c.slug))
+    .filter((c) => ["tote-bag", "satchel-bag", "sling-bag", "crossbody", "clutch", "wallet", "hand-bag", "handheld-bag", "laptop-bag", "work-bag"].includes(c.slug))
     .map((c) => ({ slug: c.slug }));
 }
 
