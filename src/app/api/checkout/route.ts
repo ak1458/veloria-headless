@@ -151,10 +151,14 @@ export async function POST(request: NextRequest) {
         postcode: validatedData.postalCode,
         country: "IN",
       },
-      line_items: validatedData.items.map((item) => ({
-        product_id: item.id,
-        quantity: item.quantity,
-      })),
+      line_items: validatedData.items.map((item) => {
+        const realProduct = realProducts.find(p => p.id === item.id);
+        return {
+          product_id: realProduct?.parent_id || item.id,
+          variation_id: realProduct?.parent_id ? item.id : 0,
+          quantity: item.quantity,
+        };
+      }),
       shipping_lines: [
         {
           method_id: validatedData.shippingMethod,
