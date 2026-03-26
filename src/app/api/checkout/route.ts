@@ -229,7 +229,8 @@ export async function POST(request: NextRequest) {
       customer_id: customerId,
     };
 
-    const response = await fetch(`${WC_API_URL}/orders`, {
+    // Create WooCommerce order with retry logic for invalid coupons
+    let response = await fetch(`${WC_API_URL}/orders`, {
       method: "POST",
       headers: {
         Authorization: getAuthHeader(),
@@ -237,6 +238,25 @@ export async function POST(request: NextRequest) {
       },
       body: JSON.stringify(orderData),
     });
+
+    // If invalid coupon, retry once without coupons
+    if (!response.ok) {
+      const errorData = await response.clone().json().catch(() => ({}));
+      if (
+        errorData.code === "woocommerce_rest_invalid_coupon" || 
+        errorData.message?.toLowerCase().includes("does not exist")
+      ) {
+        console.warn("[Checkout] Invalid coupon detected, retrying without coupons...");
+        response = await fetch(`${WC_API_URL}/orders`, {
+          method: "POST",
+          headers: {
+            Authorization: getAuthHeader(),
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ ...orderData, coupon_lines: [] }),
+        });
+      }
+    }
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
