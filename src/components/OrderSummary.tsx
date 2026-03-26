@@ -82,9 +82,7 @@ export default function OrderSummary({ showCouponSection = true }: OrderSummaryP
             }`}
           >
             Prepaid
-            {calculation && calculation.itemCount >= 2 && (
-              <span className="block text-[10px] opacity-80">+5% extra off</span>
-            )}
+            <span className="block text-[10px] opacity-80">+5% extra off</span>
           </button>
           <button
             onClick={() => setIsPrepaid(false)}

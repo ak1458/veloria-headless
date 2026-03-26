@@ -3,6 +3,9 @@ import { persist } from "zustand/middleware";
 import { CartItem } from "./cart";
 import { DiscountCalculation } from "@/types/coupon";
 
+let activeCalculationRequestId = 0;
+let activeCalculationController: AbortController | null = null;
+
 interface CouponState {
   appliedCouponCodes: string[];
   calculation: DiscountCalculation | null;
@@ -11,12 +14,16 @@ interface CouponState {
   error: string | null;
   
   // Actions
-  addCoupon: (code: string) => Promise<{ success: boolean; error?: string }>;
-  removeCoupon: (code: string) => void;
+  addCoupon: (code: string, items: CartItem[]) => Promise<{ success: boolean; error?: string }>;
+  removeCoupon: (code: string, items?: CartItem[]) => Promise<void>;
   clearCoupons: () => void;
   setIsPrepaid: (isPrepaid: boolean) => void;
-  calculateDiscounts: (items: CartItem[]) => Promise<void>;
-  validateCoupon: (code: string, subtotal: number, itemCount: number) => Promise<{ valid: boolean; error?: string }>;
+  calculateDiscounts: (items: CartItem[]) => Promise<DiscountCalculation | null>;
+  validateCoupon: (code: string, items: CartItem[]) => Promise<{ valid: boolean; error?: string }>;
+}
+
+function getNormalizedAppliedCodes(calculation: DiscountCalculation | null): string[] {
+  return (calculation?.appliedCoupons ?? []).map((item) => item.coupon.code.toUpperCase());
 }
 
 export const useCouponStore = create<CouponState>()(
@@ -28,18 +35,21 @@ export const useCouponStore = create<CouponState>()(
       isLoading: false,
       error: null,
 
-      addCoupon: async (code: string) => {
-        const { appliedCouponCodes, calculation } = get();
+      addCoupon: async (code: string, items: CartItem[]) => {
+        const { appliedCouponCodes } = get();
+        const normalizedCode = code.toUpperCase();
         
         // Check if already applied
-        if (appliedCouponCodes.includes(code.toUpperCase())) {
+        if (appliedCouponCodes.includes(normalizedCode)) {
           return { success: false, error: "Coupon already applied" };
         }
 
+        if (appliedCouponCodes.length > 0) {
+          return { success: false, error: "Only one coupon can be applied per order" };
+        }
+
         // Validate coupon
-        const subtotal = calculation?.originalSubtotal || 0;
-        const itemCount = calculation?.itemCount || 1; // Default to 1 if not available, though in cart it should be
-        const validation = await get().validateCoupon(code, subtotal, itemCount);
+        const validation = await get().validateCoupon(code, items);
         
         if (!validation.valid) {
           return { success: false, error: validation.error };
@@ -47,18 +57,39 @@ export const useCouponStore = create<CouponState>()(
 
         // Add coupon
         set({ 
-          appliedCouponCodes: [...appliedCouponCodes, code.toUpperCase()],
+          appliedCouponCodes: [normalizedCode],
           error: null,
         });
+
+        const latestCalculation = await get().calculateDiscounts(items);
+        const wasApplied = latestCalculation?.appliedCoupons.some(
+          (item) => item.coupon.code.toUpperCase() === normalizedCode,
+        );
+
+        if (!latestCalculation || !wasApplied) {
+          return {
+            success: false,
+            error:
+              normalizedCode === "LUCKYDRAW"
+                ? "Lucky Draw discount could not be applied to this cart."
+                : "Coupon could not be applied.",
+          };
+        }
 
         return { success: true };
       },
 
-      removeCoupon: (code: string) => {
+      removeCoupon: async (code: string, items?: CartItem[]) => {
         const { appliedCouponCodes } = get();
         set({
           appliedCouponCodes: appliedCouponCodes.filter((c) => c !== code.toUpperCase()),
         });
+
+        if (items && items.length > 0) {
+          await get().calculateDiscounts(items);
+        } else {
+          set({ calculation: null });
+        }
       },
 
       clearCoupons: () => {
@@ -70,9 +101,15 @@ export const useCouponStore = create<CouponState>()(
       },
 
       calculateDiscounts: async (items: CartItem[]) => {
+        activeCalculationRequestId += 1;
+        const requestId = activeCalculationRequestId;
+
+        activeCalculationController?.abort();
+        activeCalculationController = new AbortController();
+
         if (items.length === 0) {
-          set({ calculation: null });
-          return;
+          set({ calculation: null, appliedCouponCodes: [], isLoading: false, error: null });
+          return null;
         }
 
         set({ isLoading: true, error: null });
@@ -83,6 +120,7 @@ export const useCouponStore = create<CouponState>()(
           const response = await fetch("/api/coupons", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
+            signal: activeCalculationController.signal,
             body: JSON.stringify({
               items: items.map((item) => ({
                 id: item.id,
@@ -98,19 +136,43 @@ export const useCouponStore = create<CouponState>()(
           const data = await response.json();
 
           if (data.success) {
-            set({ calculation: data.calculation });
+            const nextCalculation = data.calculation as DiscountCalculation;
+
+            if (requestId === activeCalculationRequestId) {
+              set({
+                calculation: nextCalculation,
+                appliedCouponCodes: getNormalizedAppliedCodes(nextCalculation),
+                error: null,
+              });
+            }
+
+            return nextCalculation;
           } else {
-            set({ error: data.error || "Failed to calculate discounts" });
+            if (requestId === activeCalculationRequestId) {
+              set({ error: data.error || "Failed to calculate discounts", calculation: null });
+            }
           }
-        } catch (err) {
-          set({ error: "Network error" });
+        } catch (error) {
+          if (error instanceof DOMException && error.name === "AbortError") {
+            return get().calculation;
+          }
+
+          if (requestId === activeCalculationRequestId) {
+            set({ error: "Network error", calculation: null });
+          }
         } finally {
-          set({ isLoading: false });
+          if (requestId === activeCalculationRequestId) {
+            set({ isLoading: false });
+          }
         }
+
+        return null;
       },
 
-      validateCoupon: async (code: string, subtotal: number, itemCount: number) => {
+      validateCoupon: async (code: string, items: CartItem[]) => {
         try {
+          const subtotal = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
+          const itemCount = items.reduce((sum, item) => sum + item.quantity, 0);
           const response = await fetch(
             `/api/coupons/validate?code=${encodeURIComponent(code)}&subtotal=${subtotal}&itemCount=${itemCount}`
           );

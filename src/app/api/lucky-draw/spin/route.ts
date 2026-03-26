@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import jwt from "jsonwebtoken";
 import { RateLimiter } from "@/lib/rate-limit";
+import { getClientIp } from "@/lib/request";
 
 const JWT_SECRET = process.env.JWT_SECRET as string;
 
@@ -31,7 +32,7 @@ function getRandomDiscount() {
 const spinTracker = new RateLimiter(1, 30 * 24 * 60 * 60 * 1000);
 
 export async function POST(request: NextRequest) {
-  const ip = request.headers.get("x-forwarded-for") ?? "unknown";
+  const ip = getClientIp(request);
   
   if (ip !== "unknown" && spinTracker.hasRecord(ip)) {
     return NextResponse.json({ success: false, error: "You have already spun the wheel!" }, { status: 403 });

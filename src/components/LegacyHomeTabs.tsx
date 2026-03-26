@@ -110,7 +110,7 @@ export default function LegacyHomeTabs({ tabs }: LegacyHomeTabsProps) {
                 key={product.id}
                 initial={{ opacity: 0, x: 20 }}
                 animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: index * 0.05 }}
+                transition={{ delay: Math.min(index * 0.02, 0.12), duration: 0.2 }}
                 className="flex-shrink-0 w-[calc(50%-8px)] md:w-[280px] lg:w-[300px] snap-start"
               >
                 <PremiumProductCard

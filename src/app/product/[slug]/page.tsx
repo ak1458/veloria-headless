@@ -6,8 +6,9 @@ import {
   getProductBySlug,
   getProductVariations,
   getRelatedProducts,
-  getParentProducts,
 } from "@/lib/woocommerce";
+
+export const dynamic = "force-dynamic";
 
 interface ProductPageProps {
   params: Promise<{
@@ -17,28 +18,6 @@ interface ProductPageProps {
 
 function stripHtml(value: string): string {
   return value.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim();
-}
-
-// Generate static pages for all products at build time
-export async function generateStaticParams() {
-  try {
-    const products = await getParentProducts({ per_page: 100 });
-    
-    // If no products found, add a fallback to prevent build error
-    // The actual product pages will be rendered on-demand
-    if (products.length === 0) {
-      console.warn("No parent products found during build. Adding fallback.");
-      return [{ slug: "placeholder" }];
-    }
-    
-    return products.map((product) => ({
-      slug: product.slug,
-    }));
-  } catch (error) {
-    console.error("Failed to generate static params for products:", error);
-    // Return fallback to prevent build error
-    return [{ slug: "placeholder" }];
-  }
 }
 
 export async function generateMetadata({

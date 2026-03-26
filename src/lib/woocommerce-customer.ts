@@ -1,8 +1,8 @@
-import { WooCommerceCustomer, CustomerRegisterData, CustomerLoginData } from "@/types/customer";
+import { WooCommerceCustomer, CustomerRegisterData } from "@/types/customer";
 
-const WC_API_URL = process.env.WC_API_URL;
-const CONSUMER_KEY = process.env.WC_CONSUMER_KEY;
-const CONSUMER_SECRET = process.env.WC_CONSUMER_SECRET;
+const WC_API_URL = process.env.WC_API_URL?.trim();
+const CONSUMER_KEY = process.env.WC_CONSUMER_KEY?.trim();
+const CONSUMER_SECRET = process.env.WC_CONSUMER_SECRET?.trim();
 
 function getAuthHeader(): string {
   return "Basic " + Buffer.from(`${CONSUMER_KEY}:${CONSUMER_SECRET}`).toString("base64");

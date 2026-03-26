@@ -180,10 +180,38 @@ export default function CartPage() {
                     Proceed to Checkout
                   </Link>
 
-                  <div className="mt-4 flex items-center justify-center gap-3 text-xs text-gray-400">
-                    <span className="border border-gray-200 rounded px-2 py-0.5">VISA</span>
-                    <span className="border border-gray-200 rounded px-2 py-0.5">UPI</span>
-                    <span className="border border-gray-200 rounded px-2 py-0.5">Rupay</span>
+                  <div className="mt-4 flex items-center justify-center gap-3">
+                    {/* Visa */}
+                    <div className="flex items-center gap-1.5 bg-gradient-to-r from-[#1A1F71] to-[#2E3192] text-white px-3 py-1.5 rounded-md shadow-sm">
+                      <svg className="w-5 h-3" viewBox="0 0 48 16" fill="none">
+                        <path d="M17.68 1.5l-4.6 11h-3.1l-2.25-8.7c-.15-.5-.35-.7-.75-.9C5.65 2.4 4.15 2 3 1.65l.05-.4h5.3c.7 0 1.3.45 1.45 1.25l1.2 6.35L13.15 1.5h3.53zm11.55 7.45c.05-2.9-4-3.05-3.95-4.35 0-.4.4-.8 1.2-.9.4-.05 1.55-.1 2.85.5l.5-2.4c-.7-.25-1.6-.5-2.7-.5-2.85 0-4.85 1.5-4.85 3.65 0 1.6 1.2 2.45 2.1 3 1 .55 1.3.9 1.3 1.4 0 .75-.8 1.1-1.55 1.1-1.3 0-2-.35-2.55-.65l-.55 2.45c.7.3 1.75.55 2.95.55 3 0 5-1.45 5-3.85zm7.5 3.55h2.45l-2.15-11h-2.25c-.5 0-.95.3-1.15.75l-4.05 10.25h2.75l.55-1.6h3.4l.45 1.6zm-2.95-3.6l1.4-3.9 1.4 3.9h-2.8zm-12.6-7.4l-2.15 11h2.6l2.15-11h-2.6zm25.6 0l-2.15 11h2.6l2.15-11h-2.6z" fill="currentColor"/>
+                      </svg>
+                      <span className="text-[10px] font-semibold tracking-wide">VISA</span>
+                    </div>
+                    
+                    {/* UPI */}
+                    <div className="flex items-center gap-1.5 bg-gradient-to-r from-[#1e3a5f] to-[#2d5a87] text-white px-3 py-1.5 rounded-md shadow-sm">
+                      <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M12 2v20M2 12h20M4 4l16 16M20 4L4 20"/>
+                      </svg>
+                      <span className="text-[10px] font-bold tracking-wide">UPI</span>
+                    </div>
+                    
+                    {/* RuPay */}
+                    <div className="flex items-center gap-1.5 bg-gradient-to-r from-[#8B0000] to-[#DC143C] text-white px-3 py-1.5 rounded-md shadow-sm">
+                      <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
+                      </svg>
+                      <span className="text-[10px] font-bold tracking-wide">RuPay</span>
+                    </div>
+                    
+                    {/* Razorpay */}
+                    <div className="flex items-center gap-1.5 bg-gradient-to-r from-[#072654] to-[#0d3a7a] text-white px-3 py-1.5 rounded-md shadow-sm">
+                      <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
+                      </svg>
+                      <span className="text-[10px] font-bold tracking-wide">Razorpay</span>
+                    </div>
                   </div>
                 </div>
               </div>

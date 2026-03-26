@@ -1,8 +1,9 @@
 "use client";
 
-import { useState, useMemo, useCallback } from "react";
+import { useState, useMemo, useCallback, useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
+import { useSearchParams } from "next/navigation";
 import { useCartStore } from "@/store/cart";
 import { useWishlistStore } from "@/store/wishlist";
 import type { WCProduct } from "@/lib/woocommerce";
@@ -96,6 +97,7 @@ export default function ProductDetails({ product, variations }: ProductDetailsPr
   const [selectedVariation, setSelectedVariation] = useState<WCProduct | null>(null);
   const [thumbsIndex, setThumbsIndex] = useState(0);
 
+  const searchParams = useSearchParams();
   const addItem = useCartStore((state) => state.addItem);
   const openCart = useCartStore((state) => state.openCart);
   const { isInWishlist, toggleItem } = useWishlistStore();
@@ -107,6 +109,21 @@ export default function ProductDetails({ product, variations }: ProductDetailsPr
     () => buildVariationOptions(variations),
     [variations]
   );
+
+  // Sync selected variation with URL parameter on mount
+  useEffect(() => {
+    const colorParam = searchParams.get("attribute_pa_color");
+    if (colorParam && variationOptions.length > 0 && !selectedVariation) {
+      const match = variationOptions.find(
+        (opt) => opt.color.toLowerCase().replace(/\s+/g, "-") === colorParam.toLowerCase()
+      );
+      if (match) {
+        setSelectedVariation(match.product);
+        setSelectedImage(0);
+        setThumbsIndex(0);
+      }
+    }
+  }, [searchParams, variationOptions, selectedVariation]);
 
   const images = useMemo(
     () => buildGallery(product, selectedVariation),

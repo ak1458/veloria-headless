@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useCouponStore } from "@/store/cart-coupon";
+import { useCartStore } from "@/store/cart";
 import { Gift, X } from "lucide-react";
 
 const SEGMENTS = [
@@ -20,8 +21,10 @@ export function SpinWheel() {
   const [hasSpun, setHasSpun] = useState(true); // default true until we check
   const [wonDiscount, setWonDiscount] = useState<number | null>(null);
   const [rotation, setRotation] = useState(0);
+  const [isApplyingDiscount, setIsApplyingDiscount] = useState(false);
   
-  const addCoupon = useCouponStore((state: any) => state.addCoupon);
+  const addCoupon = useCouponStore((state) => state.addCoupon);
+  const items = useCartStore((state) => state.items);
 
   useEffect(() => {
     // Check if they already spun
@@ -62,11 +65,17 @@ export function SpinWheel() {
 
         setRotation(targetRotation);
 
-        setTimeout(() => {
+        setTimeout(async () => {
           setIsSpinning(false);
           setHasSpun(true);
           setWonDiscount(discountResult);
-          addCoupon("LUCKYDRAW");
+          setIsApplyingDiscount(true);
+          const result = await addCoupon("LUCKYDRAW", items);
+          setIsApplyingDiscount(false);
+
+          if (!result.success && result.error) {
+            alert(`You won ${discountResult}% off. ${result.error}`);
+          }
         }, 5100);
 
       } else {
@@ -121,7 +130,7 @@ export function SpinWheel() {
               <div className="text-center mb-8">
                 <h2 className="text-3xl font-serif font-light mb-2 text-[#c3a378]">Lucky Draw</h2>
                 {wonDiscount ? (
-                  <p className="text-gray-300">Congratulations! Your coupon is applied.</p>
+                  <p className="text-gray-300">Congratulations! Your discount is now available for this cart.</p>
                 ) : (
                   <p className="text-gray-300">Want an extra discount? Spin the wheel to get up to 50% off!</p>
                 )}
@@ -185,7 +194,9 @@ export function SpinWheel() {
                 >
                   <div className="text-5xl font-bold text-[#c3a378] mb-2">{wonDiscount}% OFF</div>
                   <p className="text-gray-300 text-sm">
-                    Your exclusive discount has been successfully applied to your cart! 
+                    {isApplyingDiscount
+                      ? "Applying your reward to this cart..."
+                      : "Your exclusive discount is now locked to this cart."}
                   </p>
                 </motion.div>
               )}

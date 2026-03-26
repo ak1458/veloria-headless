@@ -3,6 +3,7 @@ import { z } from "zod";
 import { createWCCustomer, getCustomerByEmail } from "@/lib/woocommerce-customer";
 import { generateToken } from "@/lib/auth/jwt";
 import { RateLimiter } from "@/lib/rate-limit";
+import { getClientIp } from "@/lib/request";
 
 const registerSchema = z.object({
   email: z.string().email("Please enter a valid email"),
@@ -22,7 +23,7 @@ const registerLimiter = new RateLimiter(3, 60 * 60 * 1000);
 
 export async function POST(request: NextRequest) {
   try {
-    const ip = request.headers.get("x-forwarded-for") ?? "unknown";
+    const ip = getClientIp(request);
     const limitResult = registerLimiter.check(ip);
     if (!limitResult.success) {
       return NextResponse.json({ success: false, error: "Too many registration attempts. Please try again later." }, { status: 429 });

@@ -1,25 +1,17 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useState } from "react";
 import { ShoppingBag, Heart, ShoppingCart, User } from "lucide-react";
 import { useCartStore } from "@/store/cart";
 import { useWishlistStore } from "@/store/wishlist";
 
-export default function MobileBottomNav() {
+function MobileBottomNavInner() {
   const pathname = usePathname();
-  const [mounted, setMounted] = useState(false);
   
   const totalItems = useCartStore((state) => state.getTotalItems());
   const wishlistCount = useWishlistStore((state) => state.items.length);
-  
-  const displayItems = mounted ? totalItems : 0;
-  const displayWishlist = mounted ? wishlistCount : 0;
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
 
   const isActive = (href: string) => {
     if (href === "/shop") {
@@ -41,13 +33,13 @@ export default function MobileBottomNav() {
       href: "/wishlist", 
       label: "Wishlist", 
       icon: Heart,
-      badge: displayWishlist > 0 ? displayWishlist : null
+      badge: wishlistCount > 0 ? wishlistCount : null
     },
     { 
       href: "/cart", 
       label: "Cart", 
       icon: ShoppingCart,
-      badge: displayItems > 0 ? displayItems : null
+      badge: totalItems > 0 ? totalItems : null
     },
     { 
       href: "/my-account", 
@@ -80,7 +72,7 @@ export default function MobileBottomNav() {
                   size={22} 
                   strokeWidth={active ? 2.5 : 2}
                 />
-                {item.badge !== null && mounted && (
+                {item.badge !== null && (
                   <span className="absolute -top-2 -right-2 w-4 h-4 bg-[#b59a5c] text-white text-[10px] font-bold flex items-center justify-center rounded-full">
                     {item.badge > 9 ? '9+' : item.badge}
                   </span>
@@ -96,3 +88,5 @@ export default function MobileBottomNav() {
     </nav>
   );
 }
+
+export default dynamic(() => Promise.resolve(MobileBottomNavInner), { ssr: false });

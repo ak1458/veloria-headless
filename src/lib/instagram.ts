@@ -8,7 +8,7 @@ export interface InstagramPost {
 export async function getInstagramFeed(): Promise<InstagramPost[]> {
   try {
     const response = await fetch("https://veloriavault.com/", {
-      next: { revalidate: 3600 }, // Cache for 1 hour to avoid spamming the WP site
+      next: { revalidate: 900 },
     });
     
     if (!response.ok) {
@@ -18,8 +18,8 @@ export async function getInstagramFeed(): Promise<InstagramPost[]> {
     const html = await response.text();
     const posts: InstagramPost[] = [];
     
-    // Target the individual list items in the widget
-    const itemRegex = /<li[^>]*class="[^"]*zoom-instagram-widget__item[^"]*"[^>]*>([\s\S]*?)<\/li>/gi;
+    // Target the individual list items in the feed/widget
+    const itemRegex = /<li[^>]*class="[^"]*zoom-instagram-(?:widget|feed)__item[^"]*"[^>]*>([\s\S]*?)<\/li>/gi;
     let match;
     
     while ((match = itemRegex.exec(html)) !== null) {
@@ -35,7 +35,7 @@ export async function getInstagramFeed(): Promise<InstagramPost[]> {
       if (urlMatch && imgMatch) {
         const url = urlMatch[1].endsWith('/') ? urlMatch[1] : `${urlMatch[1]}/`;
         let imageUrl = imgMatch[1];
-        let caption = altMatch ? altMatch[1] : "";
+        const caption = altMatch ? altMatch[1] : "";
         
         // Exclude profile logos or non-post images
         if (imageUrl.toLowerCase().includes("logo") || imageUrl.toLowerCase().includes("avatar")) {

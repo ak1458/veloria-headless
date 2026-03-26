@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Tag, X, Loader2, Check, Sparkles } from "lucide-react";
 import { useCouponStore } from "@/store/cart-coupon";
 import { useCartStore } from "@/store/cart";
@@ -15,19 +15,13 @@ export default function CouponSection() {
     error,
     addCoupon, 
     removeCoupon,
-    calculateDiscounts,
   } = useCouponStore();
   
   const { items } = useCartStore();
 
-  // Recalculate discounts when items or coupons change
-  useEffect(() => {
-    calculateDiscounts(items);
-  }, [items, appliedCouponCodes, calculateDiscounts]);
-
   const handleApplyCoupon = async () => {
     if (!couponInput.trim()) return;
-    await addCoupon(couponInput.trim());
+    await addCoupon(couponInput.trim(), items);
     setCouponInput("");
   };
 
@@ -66,6 +60,7 @@ export default function CouponSection() {
         </div>
         <Sparkles className="w-6 h-6 text-[#b59a5c]" />
       </div>
+      <p className="text-xs text-gray-500 mb-4">Only one coupon can be applied per order.</p>
 
       {/* Coupon Input */}
       <div className="flex gap-2 mb-4">
@@ -119,7 +114,9 @@ export default function CouponSection() {
                   </div>
                 </div>
                 <button
-                  onClick={() => removeCoupon(code)}
+                  onClick={() => {
+                    void removeCoupon(code, items);
+                  }}
                   className="p-1 text-gray-400 hover:text-red-500 transition-colors"
                 >
                   <X className="w-4 h-4" />

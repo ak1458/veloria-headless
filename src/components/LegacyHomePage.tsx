@@ -17,9 +17,7 @@ import {
   getVariationProducts,
   getProductReviews,
   type WCProduct,
-  type WCReview,
 } from "@/lib/woocommerce";
-import { getInstagramFeed } from "@/lib/instagram";
 
 // Custom Premium SVG Icons
 // Custom Premium SVG Icons
@@ -62,7 +60,7 @@ const HammerIcon = (props: React.SVGProps<SVGSVGElement>) => (
 const HOME_FEATURES: Array<{
   title: string;
   description: string;
-  icon: React.ComponentType<any>;
+  icon: React.ComponentType<React.SVGProps<SVGSVGElement>>;
 }> = [
     {
       title: "Genuine Leather",
@@ -114,16 +112,20 @@ function findProduct(products: WCProduct[], terms: string[]): WCProduct | undefi
 }
 
 export default async function LegacyHomePage() {
-  const products = await getVariationProducts();
+  const [productsResult, reviewsResult] = await Promise.allSettled([
+    getVariationProducts(),
+    getProductReviews({ per_page: 5 }),
+  ]);
+
+  const products = productsResult.status === "fulfilled" ? productsResult.value : [];
+  const reviews = reviewsResult.status === "fulfilled" ? reviewsResult.value : [];
+
   const tabs = CATEGORY_TABS.map((tab) => ({
     ...tab,
     products: products.filter((product) =>
       product.categories.some((category) => category.slug === tab.slug),
-    ),
+    ).slice(0, 12),
   })).filter((tab) => tab.products.length > 0);
-
-  const reviews = await getProductReviews({ per_page: 5 });
-  const instagramPosts = await getInstagramFeed();
 
   const donnaSpotlight =
     findProduct(products, ["donna", "chocolate brown"]) ||
@@ -136,6 +138,12 @@ export default async function LegacyHomePage() {
     findProduct(products, ["the diana", "tan"]),
     findProduct(products, ["the diana", "teal green"]),
   ].filter((product): product is WCProduct => Boolean(product));
+
+  // Fallback: If specific showcased products aren't found in the first 100,
+  // just show the first 4 available products to avoid an empty section.
+  const finalShowcaseProducts = showcaseProducts.length > 0 
+    ? showcaseProducts 
+    : products.slice(0, 4);
 
   return (
     <main id="main-content" className="legacy-home-page" role="main">
@@ -230,14 +238,11 @@ export default async function LegacyHomePage() {
           </div>
 
           {/* Product Grid - Consistent gaps for alignment */}
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-5">
-            {showcaseProducts.map((product) => (
-              <HomeProductCard
-                key={product.id}
-                product={product}
-              />
-            ))}
-          </div>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+                {finalShowcaseProducts.map((product) => (
+                  <HomeProductCard key={product.id} product={product} />
+                ))}
+              </div>
         </div>
       </section>
 
@@ -258,7 +263,7 @@ export default async function LegacyHomePage() {
       </section>
 
       {/* Instagram Feed Section */}
-      <InstagramFeed posts={instagramPosts} />
+      <InstagramFeed />
 
       {/* Policies Section */}
       <section className="py-16 lg:py-20 border-t border-gray-100 bg-white">

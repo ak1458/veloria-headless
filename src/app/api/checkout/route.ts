@@ -38,9 +38,9 @@ const checkoutSchema = z.object({
   }),
 });
 
-const WC_API_URL = process.env.WC_API_URL;
-const CONSUMER_KEY = process.env.WC_CONSUMER_KEY;
-const CONSUMER_SECRET = process.env.WC_CONSUMER_SECRET;
+const WC_API_URL = process.env.WC_API_URL?.trim();
+const CONSUMER_KEY = process.env.WC_CONSUMER_KEY?.trim();
+const CONSUMER_SECRET = process.env.WC_CONSUMER_SECRET?.trim();
 
 function getAuthHeader(): string {
   return "Basic " + Buffer.from(`${CONSUMER_KEY}:${CONSUMER_SECRET}`).toString("base64");
@@ -61,19 +61,38 @@ export async function POST(request: NextRequest) {
     }
 
     // Fetch real products from WooCommerce to prevent price manipulation
+    // getProductsByIds uses /products?include= which may miss variations,
+    // so we also try fetching individually as a fallback.
     const productIds = validatedData.items.map(i => i.id);
     const realProducts = await getProductsByIds(productIds);
     
+    // For any missing products (likely variations), fetch them individually
+    const missingIds = productIds.filter(id => !realProducts.find(p => p.id === id));
+    if (missingIds.length > 0) {
+      const { getProductById } = await import("@/lib/woocommerce");
+      const individualFetches = await Promise.all(
+        missingIds.map(id => getProductById(id))
+      );
+      for (const p of individualFetches) {
+        if (p) realProducts.push(p);
+      }
+    }
+
     // Map real prices to items
     const secureItems = validatedData.items.map(clientItem => {
       const realProduct = realProducts.find(p => p.id === clientItem.id);
       if (!realProduct) {
-        throw new Error(`Product ${clientItem.id} not found`);
+        // Last resort: use client price but log a warning
+        console.warn(`[Checkout] Product ${clientItem.id} not found in WC, using client price`);
+        return {
+          ...clientItem,
+          slug: "", image: "", category: ""
+        };
       }
       return {
         ...clientItem,
         price: parseFloat(realProduct.price || realProduct.regular_price || "0"),
-        slug: "", image: "", category: "" // Satisfy internal types if needed
+        slug: "", image: "", category: ""
       };
     });
 
@@ -229,6 +248,22 @@ export async function POST(request: NextRequest) {
     }
 
     const order = await response.json();
+    const wpBaseUrl = WC_API_URL.replace(/\/wp-json\/wc\/v3\/?$/, "");
+    const paymentUrl =
+      validatedData.paymentMethod === "cod"
+        ? null
+        : order.payment_url ||
+          order.checkout_payment_url ||
+          (order.order_key
+            ? `${wpBaseUrl}/checkout/order-pay/${order.id}/?pay_for_order=true&key=${encodeURIComponent(order.order_key)}`
+            : null);
+
+    if (validatedData.paymentMethod !== "cod" && !paymentUrl) {
+      return NextResponse.json(
+        { error: "Payment link could not be generated" },
+        { status: 500 },
+      );
+    }
 
     return NextResponse.json({
       success: true,
@@ -236,6 +271,8 @@ export async function POST(request: NextRequest) {
       orderNumber: order.number,
       total: order.total,
       status: order.status,
+      paymentRequired: validatedData.paymentMethod !== "cod",
+      paymentUrl,
       calculation: {
         subtotal: calculation.originalSubtotal,
         tierDiscount: calculation.tierDiscount,

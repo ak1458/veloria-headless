@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState, useRef } from "react";
 import Link from "next/link";
-import { Check, ArrowRight, CreditCard, ShoppingBag, Loader2 } from "lucide-react";
+import { Check, ArrowRight, CreditCard, ShoppingBag, Loader2, Shield } from "lucide-react";
 import { motion } from "framer-motion";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -12,6 +12,7 @@ import { useCouponStore } from "@/store/cart-coupon";
 import OrderSummary from "@/components/OrderSummary";
 import CouponSection from "@/components/CouponSection";
 import { SpinWheel } from "@/components/SpinWheel";
+import RazorpayPayment from "@/components/RazorpayPayment";
 
 const checkoutSchema = z.object({
   email: z.string().email("Please enter a valid email"),
@@ -30,26 +31,37 @@ const steps = [
   { id: 2, label: "Payment" },
 ];
 
+interface PendingOrder {
+  orderId: number;
+  orderNumber: string;
+  total: number;
+}
+
 export default function CheckoutPage() {
   const { items, clearCart } = useCartStore();
-  const { calculation, isPrepaid, setIsPrepaid, calculateDiscounts } = useCouponStore();
+  const { calculation, isPrepaid, setIsPrepaid, calculateDiscounts, clearCoupons } = useCouponStore();
   const [currentStep, setCurrentStep] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [orderError, setOrderError] = useState<string | null>(null);
   const [placedOrder, setPlacedOrder] = useState<{ orderId: number; orderNumber: string } | null>(null);
-
-  useEffect(() => {
-    calculateDiscounts(items);
-  }, [items, calculateDiscounts]);
+  const [pendingOrder, setPendingOrder] = useState<PendingOrder | null>(null);
+  const formDataRef = useRef<CheckoutFormData | null>(null);
 
   const {
     register,
     handleSubmit,
     trigger,
+    getValues,
     formState: { errors },
   } = useForm<CheckoutFormData>({
     resolver: zodResolver(checkoutSchema),
   });
+
+  // Store form values for payment screen
+  const handleFormSubmit = (data: CheckoutFormData) => {
+    formDataRef.current = data;
+    onSubmit(data);
+  };
 
   const validateStep = async (step: number): Promise<boolean> => {
     if (step === 1) {
@@ -79,9 +91,9 @@ export default function CheckoutPage() {
 
     try {
       // Calculate final amounts
-      await calculateDiscounts(items);
+      const latestCalculation = await calculateDiscounts(items);
       
-      if (!calculation) {
+      if (!latestCalculation) {
         throw new Error("Failed to calculate order total");
       }
 
@@ -99,17 +111,17 @@ export default function CheckoutPage() {
           paymentMethod: isPrepaid ? "card" : "cod",
           shippingMethod: "standard",
           isPrepaid,
-          couponCodes: calculation.appliedCoupons.map(c => c.coupon.code),
+          couponCodes: latestCalculation.appliedCoupons.map(c => c.coupon.code),
           discounts: {
-            tierDiscount: calculation.tierDiscount,
-            prepaidDiscount: calculation.prepaidDiscount,
-            manualCouponDiscount: calculation.manualCouponDiscount,
+            tierDiscount: latestCalculation.tierDiscount,
+            prepaidDiscount: latestCalculation.prepaidDiscount,
+            manualCouponDiscount: latestCalculation.manualCouponDiscount,
           },
           totals: {
-            subtotal: calculation.originalSubtotal,
-            shipping: calculation.shippingCost,
-            codFee: calculation.codFee,
-            total: calculation.finalTotal,
+            subtotal: latestCalculation.originalSubtotal,
+            shipping: latestCalculation.shippingCost,
+            codFee: latestCalculation.codFee,
+            total: latestCalculation.finalTotal,
           },
         }),
       });
@@ -120,11 +132,23 @@ export default function CheckoutPage() {
         throw new Error(result.error || "Failed to place order");
       }
 
+      // For prepaid orders, show Razorpay payment instead of redirecting
+      if (result.paymentRequired) {
+        setPendingOrder({
+          orderId: result.orderId,
+          orderNumber: result.orderNumber,
+          total: result.total,
+        });
+        setIsSubmitting(false);
+        return;
+      }
+
       setPlacedOrder({
         orderId: result.orderId,
         orderNumber: result.orderNumber,
       });
       clearCart();
+      clearCoupons();
     } catch (error) {
       setOrderError(error instanceof Error ? error.message : "Something went wrong");
     } finally {
@@ -132,7 +156,36 @@ export default function CheckoutPage() {
     }
   };
 
-  if (items.length === 0 && !placedOrder) {
+  const handlePaymentSuccess = async (paymentId: string) => {
+    // Update order with payment info
+    try {
+      await fetch("/api/checkout/update-payment", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          orderId: pendingOrder?.orderId,
+          paymentId,
+          status: "completed",
+        }),
+      });
+    } catch (e) {
+      console.error("Failed to update payment status:", e);
+    }
+
+    setPlacedOrder({
+      orderId: pendingOrder!.orderId,
+      orderNumber: pendingOrder!.orderNumber,
+    });
+    setPendingOrder(null);
+    clearCart();
+    clearCoupons();
+  };
+
+  const handlePaymentError = (error: string) => {
+    setOrderError(error);
+  };
+
+  if (items.length === 0 && !placedOrder && !pendingOrder) {
     return (
       <div className="pt-24 min-h-screen bg-[#faf8f5] flex flex-col items-center justify-center p-4">
         <div className="bg-white p-8 rounded-xl shadow-sm border border-gray-100 max-w-sm w-full text-center">
@@ -141,6 +194,68 @@ export default function CheckoutPage() {
           <Link href="/shop" className="bg-[#1a1a1a] text-white px-6 py-3 text-xs font-bold uppercase tracking-widest hover:bg-[#b59a5c] transition-colors block text-center">
             Return to shop
           </Link>
+        </div>
+      </div>
+    );
+  }
+
+  // Razorpay Payment Screen
+  if (pendingOrder) {
+    return (
+      <div className="pt-24 min-h-screen bg-[#faf8f5] pb-16">
+        <div className="max-w-xl mx-auto px-4 sm:px-6 lg:px-8">
+          <motion.div 
+            initial={{ opacity: 0, y: 20 }} 
+            animate={{ opacity: 1, y: 0 }}
+            className="bg-white p-8 rounded-2xl border border-gray-100 shadow-sm"
+          >
+            <div className="text-center mb-8">
+              <div className="w-16 h-16 bg-[#072654]/10 rounded-full flex items-center justify-center mx-auto mb-4">
+                <Shield className="w-8 h-8 text-[#072654]" />
+              </div>
+              <h2 className="font-serif text-2xl text-gray-900 mb-2">Complete Your Payment</h2>
+              <p className="text-sm text-gray-500">Order #{pendingOrder.orderNumber}</p>
+            </div>
+
+            <div className="bg-gray-50 p-6 rounded-xl mb-8">
+              <div className="flex justify-between items-center mb-2">
+                <span className="text-gray-600">Amount to Pay</span>
+                <span className="text-2xl font-bold text-gray-900">₹{Number(pendingOrder.total).toLocaleString("en-IN")}</span>
+              </div>
+              <p className="text-xs text-gray-400 text-center mt-4 flex items-center justify-center gap-1">
+                <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clipRule="evenodd" />
+                </svg>
+                Secure payment powered by Razorpay
+              </p>
+            </div>
+
+            {orderError && (
+              <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
+                <p className="text-sm text-red-600">{orderError}</p>
+              </div>
+            )}
+
+            <RazorpayPayment
+              amount={Number(pendingOrder.total)}
+              orderId={pendingOrder.orderId.toString()}
+              orderNumber={pendingOrder.orderNumber}
+              customerDetails={{
+                name: `${formDataRef.current?.firstName || ''} ${formDataRef.current?.lastName || ''}`.trim(),
+                email: formDataRef.current?.email || '',
+                phone: formDataRef.current?.phone || '',
+              }}
+              onSuccess={handlePaymentSuccess}
+              onError={handlePaymentError}
+            />
+
+            <button
+              onClick={() => setPendingOrder(null)}
+              className="w-full mt-4 text-sm text-gray-500 hover:text-gray-800 transition-colors"
+            >
+              Cancel and go back
+            </button>
+          </motion.div>
         </div>
       </div>
     );
@@ -197,7 +312,7 @@ export default function CheckoutPage() {
               </div>
             )}
 
-            <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+            <form onSubmit={handleSubmit(handleFormSubmit)} className="space-y-6">
               {currentStep === 1 && (
                 <div className="space-y-4">
                   <h3 className="font-serif text-lg text-gray-800 mb-2">Contact & Shipping</h3>
@@ -298,17 +413,15 @@ export default function CheckoutPage() {
                           onChange={() => setIsPrepaid(true)}
                           className="text-[#b59a5c]"
                         />
-                        <div className="flex items-center space-x-2">
-                          <CreditCard size={20} className="text-gray-500" />
-                          <div>
-                            <p className="text-sm font-semibold">UPI / Card / Net Banking</p>
-                            <p className="text-xs text-gray-400">Secure payment via Razorpay</p>
-                          </div>
+                      <div className="flex items-center space-x-2">
+                        <CreditCard size={20} className="text-gray-500" />
+                        <div>
+                          <p className="text-sm font-semibold">UPI / Card / Net Banking</p>
+                          <p className="text-xs text-gray-400">Secure payment via Razorpay</p>
                         </div>
                       </div>
-                      {calculation && calculation.itemCount >= 2 && (
-                        <span className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded">+5% off</span>
-                      )}
+                    </div>
+                      <span className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded">+5% off</span>
                     </label>
 
                     <label className={`border-2 p-4 rounded-xl flex items-center justify-between cursor-pointer transition-all ${
@@ -367,7 +480,9 @@ export default function CheckoutPage() {
                       </>
                     ) : (
                       <>
-                        <span>Pay ₹{(calculation?.finalTotal || 0).toLocaleString("en-IN")}</span>
+                        <span>
+                          {isPrepaid ? "Continue to Payment" : "Place Order"} · ₹{(calculation?.finalTotal || 0).toLocaleString("en-IN")}
+                        </span>
                         <ArrowRight size={14} />
                       </>
                     )}

@@ -84,18 +84,21 @@ export interface WCReview {
 const WC_API_URL = process.env.WC_API_URL?.trim();
 const CONSUMER_KEY = process.env.WC_CONSUMER_KEY?.trim();
 const CONSUMER_SECRET = process.env.WC_CONSUMER_SECRET?.trim();
+const DEFAULT_REVALIDATE_SECONDS = 300;
 
-function logToFile(msg: string) {
+function logToFile(_msg: string) {
   // Silent fallback for client usage
 }
 
-function getAuthHeader(): string {
-  return "Basic " + Buffer.from(`${CONSUMER_KEY}:${CONSUMER_SECRET}`).toString("base64");
+interface WCFetchOptions {
+  revalidate?: number | false;
+  cacheBustVersion?: string | false;
 }
 
 export async function wcFetch<T>(
   endpoint: string,
   params: Record<string, string | number | boolean> = {},
+  options: WCFetchOptions = {},
 ): Promise<T> {
   if (!WC_API_URL || !CONSUMER_KEY || !CONSUMER_SECRET) {
     throw new Error(
@@ -115,12 +118,15 @@ export async function wcFetch<T>(
   // Remove newlines and use standard Basic Auth header
   const auth = Buffer.from(`${CONSUMER_KEY}:${CONSUMER_SECRET}`).toString("base64");
 
-  // Add a cache bust parameter to forcefully bypass the poisoned Vercel data cache
-  // Next.js remembers the empty responses from the old broken API keys.
-  url.searchParams.append("v", "1");
+  const cacheBustVersion = options.cacheBustVersion ?? "3";
+  if (cacheBustVersion) {
+    url.searchParams.append("v", cacheBustVersion);
+  }
 
   const finalUrl = url.toString();
-  console.log(`[wcFetch] FETCHING: ${finalUrl} (cache: no-store)`);
+  if (process.env.NODE_ENV !== "production") {
+    console.log(`[wcFetch] FETCHING: ${finalUrl}`);
+  }
 
   const response = await fetch(finalUrl, {
     method: 'GET',
@@ -128,9 +134,9 @@ export async function wcFetch<T>(
       "Authorization": `Basic ${auth}`,
       "Accept": "application/json",
     },
-    // Cache the response for 1 hour to prevent Vercel Serverless Function 500 timeouts
-    // and to significantly speed up localhost loading times.
-    next: { revalidate: 3600 },
+    ...(options.revalidate === false
+      ? { cache: "no-store" as const }
+      : { next: { revalidate: options.revalidate ?? DEFAULT_REVALIDATE_SECONDS } }),
   });
 
   if (!response.ok) {
@@ -144,6 +150,79 @@ export async function wcFetch<T>(
   return data;
 }
 
+const CATALOG_PRODUCT_FIELDS = [
+  "id",
+  "name",
+  "slug",
+  "permalink",
+  "type",
+  "parent_id",
+  "price",
+  "regular_price",
+  "sale_price",
+  "on_sale",
+  "images",
+  "categories",
+  "attributes",
+  "menu_order",
+  "stock_status",
+  "stock_quantity",
+];
+
+function toCatalogProduct(product: Partial<WCProduct>): WCProduct {
+  const images = (product.images ?? [])
+    .map((image) => ({
+      id: image.id,
+      src: image.src,
+      alt: image.alt ?? "",
+      name: image.name,
+    }))
+    .slice(0, 1);
+
+  return {
+    id: product.id ?? 0,
+    name: product.name ?? "",
+    slug: product.slug ?? "",
+    permalink: product.permalink ?? "",
+    type: product.type ?? "variation",
+    parent_id: product.parent_id ?? 0,
+    description: "",
+    short_description: "",
+    price: product.price ?? "",
+    regular_price: product.regular_price ?? "",
+    sale_price: product.sale_price ?? "",
+    on_sale: product.on_sale ?? false,
+    image: images[0],
+    images,
+    categories: (product.categories ?? []).map((category) => ({
+      id: category.id,
+      name: category.name,
+      slug: category.slug,
+      description: category.description ?? "",
+      count: category.count ?? 0,
+      image: category.image ?? null,
+    })),
+    average_rating: "0",
+    rating_count: 0,
+    stock_status: product.stock_status ?? "instock",
+    stock_quantity: product.stock_quantity ?? null,
+    sku: "",
+    related_ids: [],
+    attributes: (product.attributes ?? []).map((attribute) => ({
+      id: attribute.id,
+      name: attribute.name,
+      slug: attribute.slug,
+      option: attribute.option,
+      options: attribute.options,
+      variation: attribute.variation,
+      visible: attribute.visible,
+    })),
+    variations: [],
+    menu_order: product.menu_order ?? 0,
+    meta_data: [],
+  };
+}
+
 export async function getProducts(options: {
   per_page?: number;
   page?: number;
@@ -154,6 +233,7 @@ export async function getProducts(options: {
   order?: string;
   include?: number[];
   type?: string;
+  fields?: string[];
 } = {}): Promise<WCProduct[]> {
   const {
     per_page = 20,
@@ -161,6 +241,7 @@ export async function getProducts(options: {
     orderby = "menu_order",
     order = "asc",
     include,
+    fields,
     ...rest
   } = options;
 
@@ -176,20 +257,46 @@ export async function getProducts(options: {
   if (rest.slug) params.slug = rest.slug;
   if (rest.type) params.type = rest.type;
   if (include?.length) params.include = include.join(",");
+  if (fields?.length) params._fields = fields.join(",");
 
-  try {
-    const products = await wcFetch<WCProduct[]>("/products", params);
-    return products.sort((left, right) => {
-      if (left.menu_order !== right.menu_order) {
-        return left.menu_order - right.menu_order;
-      }
+  const products = await wcFetch<WCProduct[]>("/products", params);
+  return products.sort((left, right) => {
+    if (left.menu_order !== right.menu_order) {
+      return left.menu_order - right.menu_order;
+    }
 
-      return left.name.localeCompare(right.name);
-    });
-  } catch (error) {
-    console.error("Error fetching products:", error);
+    return (left.name ?? "").localeCompare(right.name ?? "");
+  });
+}
+
+function dedupeParentIds(products: Array<Pick<WCProduct, "parent_id">>): number[] {
+  return Array.from(
+    new Set(
+      products
+        .map((product) => product.parent_id)
+        .filter((parentId): parentId is number => parentId > 0),
+    ),
+  );
+}
+
+async function getParentProductsFromVariations(search?: string): Promise<WCProduct[]> {
+  const variations = await getProducts({
+    per_page: 100,
+    search,
+    fields: ["id", "parent_id"],
+  });
+  const parentIds = dedupeParentIds(variations);
+
+  if (!parentIds.length) {
     return [];
   }
+
+  return getProducts({
+    include: parentIds,
+    per_page: parentIds.length,
+    orderby: "menu_order",
+    order: "asc",
+  });
 }
 
 export async function getProductById(id: number): Promise<WCProduct | null> {
@@ -203,17 +310,21 @@ export async function getProductById(id: number): Promise<WCProduct | null> {
 
 export async function getProductBySlug(slug: string): Promise<WCProduct | null> {
   try {
-    const products = await getProducts({ slug, per_page: 50 });
-    const parent = products.find((product) => product.parent_id === 0 && product.type !== "variation");
+    const products = await getProducts({ slug, per_page: 10 });
+    
+    // 1. Try to find the parent product first
+    const parent = products.find((p) => p.parent_id === 0 && p.type !== "variation");
+    if (parent) return parent;
 
-    if (parent) {
-      return parent;
+    // 2. If not found, check if the slug matched a variation and get its parent
+    const variation = products.find((p) => p.parent_id > 0);
+    if (variation?.parent_id) {
+      return await getProductById(variation.parent_id);
     }
 
-    const firstVariation = products.find((product) => product.parent_id > 0);
-    if (firstVariation?.parent_id) {
-      return getProductById(firstVariation.parent_id);
-    }
+    // 3. Last resort: try exact slug match if API filtering was fuzzy
+    const exactMatch = products.find(p => p.slug === slug);
+    if (exactMatch) return exactMatch;
 
     return null;
   } catch (error) {
@@ -230,25 +341,12 @@ export async function getProductVariations(productId: number): Promise<WCProduct
       order: "asc",
     });
 
-    // WC variations endpoint only returns a singular `image`, not the full `images[]` gallery.
-    // Each variation also exists as a product with a full images array (multiple angles).
-    // Fetch each variation as a product in parallel to get the complete gallery.
-    const enriched = await Promise.all(
-      variations.map(async (variation) => {
-        try {
-          const fullProduct = await wcFetch<WCProduct>(`/products/${variation.id}`);
-          return {
-            ...variation,
-            images: fullProduct.images || [],
-          };
-        } catch {
-          // If individual fetch fails, keep the variation as-is
-          return variation;
-        }
-      })
-    );
-
-    return enriched;
+    // Keep variations as-is to avoid N+1 request timeouts on Vercel
+    return variations.map(v => ({
+      ...v,
+      // Ensure images array exists even if it only contains the variation's featured image
+      images: v.images?.length ? v.images : (v.image ? [v.image] : [])
+    }));
   } catch (error) {
     console.error("Error fetching product variations:", error);
     return [];
@@ -256,15 +354,11 @@ export async function getProductVariations(productId: number): Promise<WCProduct
 }
 
 export async function getCategories(): Promise<WCCategory[]> {
-  try {
-    return await wcFetch<WCCategory[]>("/products/categories", {
-      per_page: 100,
-      hide_empty: true,
-    });
-  } catch (error) {
-    console.error("Error fetching categories:", error);
-    return [];
-  }
+  return wcFetch<WCCategory[]>("/products/categories", {
+    per_page: 100,
+    hide_empty: true,
+    _fields: "id,name,slug,description,count,image",
+  });
 }
 
 export async function getProductReviews(params: {
@@ -294,38 +388,23 @@ export async function getVariationProducts(options: {
   categorySlug?: string;
   search?: string;
 } = {}): Promise<WCProduct[]> {
-  try {
-    // 1. Fetch all products because variations are returned directly on /products
-    let products = await getProducts({
-      per_page: 100,
-      search: options.search,
-    });
+  let products = await getProducts({
+    per_page: 100,
+    search: options.search,
+    fields: CATALOG_PRODUCT_FIELDS,
+  });
 
-    if (!products.length) {
-      console.log("[getVariationProducts] No products found.");
-      return [];
-    }
-
-    // 2. Filter by category if provided
-    if (options.categorySlug) {
-      products = products.filter((product) =>
-        product.categories && product.categories.some((category) => category.slug === options.categorySlug)
-      );
-    }
-
-    // 3. Ensure parent_slug is mapped for getRelativeProductLink
-    const variations = products.map((product) => ({
-      ...product,
-      // If parent_slug isn't available, rely on its own slug for links
-      parent_slug: product.slug, 
-    }));
-
-    console.log(`[getVariationProducts] Found ${variations.length} variations total.`);
-    return variations;
-  } catch (error) {
-    console.error("Error in getVariationProducts:", error);
+  if (!products.length) {
     return [];
   }
+
+  if (options.categorySlug) {
+    products = products.filter((product) =>
+      product.categories?.some((category) => category.slug === options.categorySlug),
+    );
+  }
+
+  return products.map((product) => toCatalogProduct(product));
 }
 
 export async function getParentProducts(options: {
@@ -333,31 +412,27 @@ export async function getParentProducts(options: {
   categorySlug?: string;
   search?: string;
 } = {}): Promise<WCProduct[]> {
-  try {
-    // Fetch only variable products (parents) directly from the API
-    const products = await getProducts({
-      per_page: options.per_page ?? 100,
-      type: "variable",
-      search: options.search,
-      orderby: "menu_order",
-      order: "asc",
-    });
+  let parentProducts = await getProducts({
+    per_page: options.per_page ?? 100,
+    type: "variable",
+    search: options.search,
+    orderby: "menu_order",
+    order: "asc",
+  });
 
-    // Filter to only include parent products (redundant but safe)
-    let parentProducts = products.filter((product) => product.parent_id === 0);
+  parentProducts = parentProducts.filter((product) => product.parent_id === 0);
 
-    // Filter by category if provided
-    if (options.categorySlug) {
-      parentProducts = parentProducts.filter((product) =>
-        product.categories.some((category) => category.slug === options.categorySlug)
-      );
-    }
-
-    return parentProducts;
-  } catch (error) {
-    console.error("Error fetching parent products:", error);
-    return [];
+  if (!parentProducts.length) {
+    parentProducts = await getParentProductsFromVariations(options.search);
   }
+
+  if (options.categorySlug) {
+    parentProducts = parentProducts.filter((product) =>
+      product.categories.some((category) => category.slug === options.categorySlug)
+    );
+  }
+
+  return parentProducts;
 }
 
 export async function getProductsByIds(ids: number[]): Promise<WCProduct[]> {

@@ -43,3 +43,6 @@ next-env.d.ts
 # build outputs
 /dist
 /audit-*.html
+
+.vercel
+.env*.local

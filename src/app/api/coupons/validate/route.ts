@@ -9,7 +9,11 @@ const validateSchema = z.object({
   itemCount: z.number().min(1).default(1),
 });
 
-const JWT_SECRET = process.env.JWT_SECRET || "fallback-super-secret-key-for-dev";
+const JWT_SECRET = process.env.JWT_SECRET as string;
+
+if (!JWT_SECRET) {
+  throw new Error("FATAL: JWT_SECRET environment variable is not set.");
+}
 
 // GET /api/coupons/validate - Validate a single coupon
 export async function GET(request: NextRequest) {
@@ -32,7 +36,7 @@ export async function GET(request: NextRequest) {
       try {
         const decoded = jwt.verify(token, JWT_SECRET) as { discount: number };
         luckyDrawDiscount = decoded.discount;
-      } catch (err) {
+      } catch {
         // Token invalid or expired
       }
     }

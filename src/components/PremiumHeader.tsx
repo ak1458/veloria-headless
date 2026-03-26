@@ -25,19 +25,19 @@ const NAV_ITEMS: NavItem[] = [
       {
         title: "By Style",
         items: [
-          { label: "Tote Bag", href: "/product-category/tote-bag" },
-          { label: "Sling Bag", href: "/product-category/sling-bag" },
-          { label: "Clutch", href: "/product-category/clutch" },
-          { label: "Handheld Bag", href: "/product-category/handheld-bag" },
+          { label: "Tote Bag", href: "/product-category/tote-bags" },
+          { label: "Sling Bag", href: "/product-category/sling-bags" },
+          { label: "Clutch", href: "/product-category/clutches" },
+          { label: "Handheld Bag", href: "/product-category/handheld-bags" },
           { label: "Crossbody", href: "/product-category/crossbody" },
-          { label: "Satchel Bag", href: "/product-category/satchel-bag" },
+          { label: "Satchel Bag", href: "/product-category/satchel-bags" },
         ]
       },
       {
         title: "Collections",
         items: [
-          { label: "Work Bag", href: "/product-category/work-bag" },
-          { label: "Laptop Bag", href: "/product-category/laptop-bag" },
+          { label: "Work Bag", href: "/product-category/work-bags" },
+          { label: "Laptop Bag", href: "/product-category/laptop-bags" },
           { label: "New Arrivals", href: "/shop?new=true" },
         ]
       }

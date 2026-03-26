@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useMemo, useEffect, useCallback } from "react";
-import Link from "next/link";
+import { useMemo, useRef } from "react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import PremiumProductCard from "@/components/PremiumProductCard";
 import type { WCProduct, WCCategory } from "@/lib/woocommerce";
@@ -19,64 +19,24 @@ const CATEGORY_TABS = [
 interface ShopContentProps {
   initialCategories: WCCategory[];
   initialProducts: WCProduct[];
+  initialCategorySlug?: string;
+  initialSearchTerm?: string;
 }
 
-function getSearchParams() {
-  if (typeof window === "undefined") return { category: undefined, search: undefined };
-  const url = new URL(window.location.href);
-  return {
-    category: url.searchParams.get("category") || undefined,
-    search: url.searchParams.get("search") || undefined,
-  };
-}
+export default function ShopContent({
+  initialCategories,
+  initialProducts,
+  initialCategorySlug,
+  initialSearchTerm,
+}: ShopContentProps) {
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const searchInputRef = useRef<HTMLInputElement>(null);
 
-export default function ShopContent({ initialCategories, initialProducts }: ShopContentProps) {
-  const [mounted, setMounted] = useState(false);
-  const [categorySlug, setCategorySlug] = useState<string | undefined>(undefined);
-  const [searchTerm, setSearchTerm] = useState<string | undefined>(undefined);
-  const [localSearch, setLocalSearch] = useState("");
+  const categorySlug = searchParams.get("category") || initialCategorySlug;
+  const searchTerm = searchParams.get("search") || initialSearchTerm;
 
-  // Function to update state from URL
-  const updateStateFromURL = useCallback(() => {
-    const params = getSearchParams();
-    setCategorySlug(params.category);
-    setSearchTerm(params.search);
-    setLocalSearch(params.search || "");
-  }, []);
-
-  useEffect(() => {
-    setMounted(true);
-    updateStateFromURL();
-  }, [updateStateFromURL]);
-
-  // Listen for URL changes (for client-side navigation)
-  useEffect(() => {
-    if (!mounted) return;
-
-    const handlePopState = () => {
-      updateStateFromURL();
-    };
-
-    // Listen for browser back/forward buttons
-    window.addEventListener("popstate", handlePopState);
-
-    // Also check URL periodically for changes (for Link clicks)
-    let lastUrl = window.location.href;
-    const checkUrlChange = () => {
-      if (window.location.href !== lastUrl) {
-        lastUrl = window.location.href;
-        updateStateFromURL();
-      }
-    };
-    const interval = setInterval(checkUrlChange, 100);
-
-    return () => {
-      window.removeEventListener("popstate", handlePopState);
-      clearInterval(interval);
-    };
-  }, [mounted, updateStateFromURL]);
-
-  // Filter categories to only show those in CATEGORY_TABS
   const categories = useMemo(() => {
     return initialCategories
       .filter((c) => CATEGORY_TABS.some((t) => t.slug === c.slug))
@@ -87,7 +47,6 @@ export default function ShopContent({ initialCategories, initialProducts }: Shop
       });
   }, [initialCategories]);
 
-  // Filter products based on category and search
   const products = useMemo(() => {
     let filtered = initialProducts;
 
@@ -108,27 +67,33 @@ export default function ShopContent({ initialCategories, initialProducts }: Shop
     return filtered;
   }, [initialProducts, categorySlug, searchTerm]);
 
+  const updateQuery = (updates: { category?: string; search?: string }) => {
+    const nextParams = new URLSearchParams(searchParams.toString());
+
+    if (updates.category) {
+      nextParams.set("category", updates.category);
+    } else {
+      nextParams.delete("category");
+    }
+
+    if (updates.search) {
+      nextParams.set("search", updates.search);
+    } else {
+      nextParams.delete("search");
+    }
+
+    const queryString = nextParams.toString();
+    router.push(queryString ? `${pathname}?${queryString}` : pathname, { scroll: false });
+  };
+
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
-    const url = new URL(window.location.href);
-    if (localSearch.trim()) {
-      url.searchParams.set("search", localSearch.trim());
-    } else {
-      url.searchParams.delete("search");
-    }
-    url.searchParams.delete("category");
-    window.location.href = url.toString();
+    const localSearch = searchInputRef.current?.value.trim() || "";
+    updateQuery({ search: localSearch || undefined });
   };
 
   const handleCategoryClick = (slug: string | null) => {
-    const url = new URL(window.location.href);
-    if (slug) {
-      url.searchParams.set("category", slug);
-    } else {
-      url.searchParams.delete("category");
-    }
-    url.searchParams.delete("search");
-    window.location.href = url.toString();
+    updateQuery({ category: slug || undefined });
   };
 
   const getCategoryLabel = (slug: string) => {
@@ -136,31 +101,8 @@ export default function ShopContent({ initialCategories, initialProducts }: Shop
     return tab?.label || slug.replace(/-/g, " ").replace(/\b\w/g, (l) => l.toUpperCase());
   };
 
-  // Show loading state before mount
-  if (!mounted) {
-    return (
-      <div className="min-h-screen bg-white pb-20 lg:pb-0">
-        <div className="relative bg-[#1a1a1a] py-20 md:py-28">
-          <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-            <h1 className="text-4xl md:text-5xl lg:text-6xl font-serif font-medium text-white text-center">
-              SHOP
-            </h1>
-          </div>
-        </div>
-        <div className="container mx-auto px-4 py-12">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            {[...Array(8)].map((_, i) => (
-              <div key={i} className="aspect-[3/4] bg-gray-100 animate-pulse rounded-lg" />
-            ))}
-          </div>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className="min-h-screen bg-white pb-20 lg:pb-0">
-      {/* Hero Banner */}
       <div className="relative bg-[#1a1a1a] py-20 md:py-28">
         <div
           className="absolute inset-0 opacity-60"
@@ -179,11 +121,8 @@ export default function ShopContent({ initialCategories, initialProducts }: Shop
         </div>
       </div>
 
-      {/* Main Content */}
       <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        {/* Search and Filter Bar */}
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6 mb-10">
-          {/* Category Tabs */}
           <div className="flex flex-wrap gap-2">
             <button
               onClick={() => handleCategoryClick(null)}
@@ -210,13 +149,13 @@ export default function ShopContent({ initialCategories, initialProducts }: Shop
             ))}
           </div>
 
-          {/* Search Form */}
           <form onSubmit={handleSearch} className="flex w-full md:w-auto">
             <div className="relative flex-1 md:w-64">
               <input
+                key={searchTerm || "all-products"}
+                ref={searchInputRef}
                 type="text"
-                value={localSearch}
-                onChange={(e) => setLocalSearch(e.target.value)}
+                defaultValue={searchTerm || ""}
                 placeholder="Search products..."
                 className="w-full px-4 py-2 pr-10 border border-gray-200 text-sm focus:outline-none focus:border-black transition-colors"
               />
@@ -231,28 +170,26 @@ export default function ShopContent({ initialCategories, initialProducts }: Shop
           </form>
         </div>
 
-        {/* Results Count */}
         <div className="mb-6">
           <p className="text-sm text-gray-500">
             Showing {products.length} product{products.length !== 1 ? "s" : ""}
           </p>
         </div>
 
-        {/* Products Grid */}
         {products.length > 0 ? (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            transition={{ duration: 0.3 }}
+            transition={{ duration: 0.2 }}
             className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6"
           >
             <AnimatePresence>
               {products.map((product, index) => (
                 <motion.div
                   key={product.id}
-                  initial={{ opacity: 0, y: 20 }}
+                  initial={{ opacity: 0, y: 12 }}
                   animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: index * 0.05 }}
+                  transition={{ delay: Math.min(index * 0.02, 0.12), duration: 0.2 }}
                 >
                   <PremiumProductCard
                     product={product}

@@ -1,13 +1,111 @@
-import { Instagram } from "lucide-react";
-import Image from "next/image";
-import { InstagramPost } from "@/lib/instagram";
+"use client";
 
-export default function InstagramFeed({ posts = [] }: { posts?: InstagramPost[] }) {
+import { useEffect, useMemo, useRef, useState } from "react";
+import { Instagram, Loader2 } from "lucide-react";
+import type { InstagramPost } from "@/lib/instagram";
+
+const FALLBACK_CARDS = [
+  "Quiet luxury details",
+  "Daily carry essentials",
+  "Premium leather craftsmanship",
+  "Structured silhouettes",
+  "Made for everyday elegance",
+  "View the latest drops",
+];
+
+function LoadingTile({ index }: { index: number }) {
+  return (
+    <div
+      className="aspect-square rounded-sm bg-gradient-to-br from-[#faf8f5] via-white to-[#f5efe4] border border-[#b59a5c]/10 animate-pulse"
+      style={{ animationDelay: `${index * 80}ms` }}
+    />
+  );
+}
+
+function FallbackTile({ label }: { label: string }) {
+  return (
+    <a
+      href="https://www.instagram.com/veloriavault/"
+      target="_blank"
+      rel="noopener noreferrer"
+      className="group aspect-square rounded-sm border border-[#b59a5c]/15 bg-gradient-to-br from-[#faf8f5] via-white to-[#f7f1e6] p-5 flex flex-col items-center justify-center text-center transition-transform duration-300 hover:-translate-y-1"
+    >
+      <Instagram className="w-7 h-7 text-[#b59a5c] mb-3 group-hover:scale-110 transition-transform" />
+      <span className="text-[11px] font-semibold tracking-[0.18em] uppercase text-gray-800">
+        Veloria Vault
+      </span>
+      <span className="mt-2 text-xs text-gray-500 leading-relaxed">{label}</span>
+    </a>
+  );
+}
+
+// Default empty array to prevent re-renders
+const DEFAULT_POSTS: InstagramPost[] = [];
+
+export default function InstagramFeed({
+  initialPosts = DEFAULT_POSTS,
+}: {
+  initialPosts?: InstagramPost[];
+}) {
+  const [posts, setPosts] = useState(initialPosts);
+  const [isLoading, setIsLoading] = useState(initialPosts.length === 0);
+  const [hasFetched, setHasFetched] = useState(initialPosts.length > 0);
+  const hasFetchedRef = useRef(initialPosts.length > 0);
+
+  useEffect(() => {
+    // Skip if we already have posts or have already fetched
+    if (initialPosts.length > 0 || hasFetchedRef.current) {
+      return;
+    }
+
+    const controller = new AbortController();
+    let isActive = true;
+
+    const loadPosts = async () => {
+      setIsLoading(true);
+      try {
+        const response = await fetch("/api/instagram", {
+          cache: "no-store",
+          signal: controller.signal,
+        });
+        const data = (await response.json()) as {
+          posts?: InstagramPost[];
+        };
+
+        if (!isActive) {
+          return;
+        }
+
+        setPosts(Array.isArray(data.posts) ? data.posts : []);
+      } catch {
+        if (!controller.signal.aborted && isActive) {
+          setPosts([]);
+        }
+      } finally {
+        if (!controller.signal.aborted && isActive) {
+          setIsLoading(false);
+          setHasFetched(true);
+          hasFetchedRef.current = true;
+        }
+      }
+    };
+
+    void loadPosts();
+
+    return () => {
+      isActive = false;
+      controller.abort();
+    };
+  }, [initialPosts]);
+
+  const showFallbackCards = useMemo(
+    () => !isLoading && hasFetched && posts.length === 0,
+    [hasFetched, isLoading, posts.length],
+  );
 
   return (
     <section className="py-16 lg:py-24 bg-white">
       <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-        {/* Header */}
         <div className="text-center mb-8">
           <a
             href="https://www.instagram.com/veloriavault/"
@@ -16,17 +114,20 @@ export default function InstagramFeed({ posts = [] }: { posts?: InstagramPost[] 
             className="inline-flex items-center justify-center space-x-3 mb-4 group"
           >
             <Instagram className="w-6 h-6 text-[#b59a5c] group-hover:scale-110 transition-transform" />
-            <span className="text-lg font-medium text-gray-900">
-              @veloriavault
-            </span>
+            <span className="text-lg font-medium text-gray-900">@veloriavault</span>
           </a>
           <p className="text-gray-500 text-sm">
             Follow us on Instagram for the latest updates and behind-the-scenes
           </p>
+          {isLoading ? (
+            <p className="mt-3 inline-flex items-center gap-2 text-xs text-gray-400">
+              <Loader2 className="w-3.5 h-3.5 animate-spin" />
+              Loading latest posts
+            </p>
+          ) : null}
         </div>
 
-        {/* Instagram Feed Grid */}
-        <div 
+        <div
           id="instagram-feed-container"
           className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4"
         >
@@ -53,16 +154,17 @@ export default function InstagramFeed({ posts = [] }: { posts?: InstagramPost[] 
                 </div>
               </a>
             ))
-          ) : (
-             <div className="col-span-full min-h-[150px] flex items-center justify-center border-2 border-dashed border-gray-200 p-8 text-center">
-               <p className="text-gray-500 text-sm">
-                 Unable to load Instagram feed at this time. Follow us directly on Instagram!
-               </p>
-             </div>
-          )}
+          ) : isLoading ? (
+            Array.from({ length: 6 }, (_, index) => (
+              <LoadingTile key={`instagram-loading-${index}`} index={index} />
+            ))
+          ) : showFallbackCards ? (
+            FALLBACK_CARDS.map((label) => (
+              <FallbackTile key={label} label={label} />
+            ))
+          ) : null}
         </div>
 
-        {/* Follow Button */}
         <div className="text-center mt-8">
           <a
             href="https://www.instagram.com/veloriavault/"
