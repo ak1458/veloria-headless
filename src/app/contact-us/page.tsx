@@ -218,7 +218,7 @@ export default function ContactUsPage() {
                   </li>
                   <li className="flex items-start gap-3">
                     <span className="text-[#b59a5c] mt-1">✓</span>
-                    <span>7-day easy returns policy</span>
+                    <span>Hassle-free replacement policy</span>
                   </li>
                   <li className="flex items-start gap-3">
                     <span className="text-[#b59a5c] mt-1">✓</span>

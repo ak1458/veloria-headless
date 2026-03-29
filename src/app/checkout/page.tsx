@@ -187,23 +187,27 @@ export default function CheckoutPage() {
 
   if (items.length === 0 && !placedOrder && !pendingOrder) {
     return (
-      <div className="pt-24 min-h-screen bg-[#faf8f5] flex flex-col items-center justify-center p-4">
-        <div className="bg-white p-8 rounded-xl shadow-sm border border-gray-100 max-w-sm w-full text-center">
-          <ShoppingBag className="w-12 h-12 text-gray-300 mx-auto mb-4" />
-          <p className="font-serif text-lg mb-4 text-gray-800">Your cart is empty</p>
-          <Link href="/shop" className="bg-[#1a1a1a] text-white px-6 py-3 text-xs font-bold uppercase tracking-widest hover:bg-[#b59a5c] transition-colors block text-center">
-            Return to shop
-          </Link>
+      <>
+        <div className="pt-24 min-h-screen bg-[#faf8f5] flex flex-col items-center justify-center p-4">
+          <div className="bg-white p-8 rounded-xl shadow-sm border border-gray-100 max-w-sm w-full text-center">
+            <ShoppingBag className="w-12 h-12 text-gray-300 mx-auto mb-4" />
+            <p className="font-serif text-lg mb-4 text-gray-800">Your cart is empty</p>
+            <Link href="/shop" className="bg-[#1a1a1a] text-white px-6 py-3 text-xs font-bold uppercase tracking-widest hover:bg-[#b59a5c] transition-colors block text-center">
+              Return to shop
+            </Link>
+          </div>
         </div>
-      </div>
+        <SpinWheel />
+      </>
     );
   }
 
   // Razorpay Payment Screen
   if (pendingOrder) {
     return (
-      <div className="pt-24 min-h-screen bg-[#faf8f5] pb-16">
-        <div className="max-w-xl mx-auto px-4 sm:px-6 lg:px-8">
+      <>
+        <div className="pt-24 min-h-screen bg-[#faf8f5] pb-16">
+          <div className="max-w-xl mx-auto px-4 sm:px-6 lg:px-8">
           <motion.div 
             initial={{ opacity: 0, y: 20 }} 
             animate={{ opacity: 1, y: 0 }}
@@ -256,8 +260,10 @@ export default function CheckoutPage() {
               Cancel and go back
             </button>
           </motion.div>
+          </div>
         </div>
-      </div>
+        <SpinWheel />
+      </>
     );
   }
 

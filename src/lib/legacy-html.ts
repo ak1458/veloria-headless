@@ -55,7 +55,7 @@ const replacements: Array<[string, string]> = [
     "We looked at what worked, what didn&#8217;t, and what women were still looking for: handbags that perfectly balance everyday functionality with elegant design.",
     "We looked at what worked, what didn&#8217;t, and what women were still looking for: handbags that balance everyday functionality with elegant design.",
   ],
-  ["Easy 7- Day Returns", "Easy 7-Day Returns"],
+  ["Easy 7- Day Returns", "Hassle-Free Replacements"],
   [
     "Carefully derived from natural hides ,valued for its durability, flexibility, and refined finish.",
     "Carefully derived from natural hides, valued for their durability, flexibility, and refined finish.",

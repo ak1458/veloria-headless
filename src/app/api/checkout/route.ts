@@ -1,3 +1,28 @@
+/**
+ * ============================================================
+ * CHECKOUT API — /api/checkout
+ * ============================================================
+ *
+ * FLOW:
+ * 1. Frontend submits cart items + billing details + payment method
+ * 2. This API fetches REAL prices from WooCommerce to prevent tampering
+ * 3. Discounts are recalculated server-side (tier, prepaid, coupons, lucky draw)
+ * 4. A WooCommerce order is created via REST API (/wp-json/wc/v3/orders)
+ *    → This order appears in your WooCommerce dashboard immediately
+ *
+ * PAYMENT METHODS:
+ * - COD: Order created as "pending" → no further steps
+ * - Prepaid (UPI/Card/NetBanking): Order created as "pending" →
+ *   frontend opens Razorpay SDK → on payment success →
+ *   /api/razorpay/verify confirms signature →
+ *   /api/checkout/update-payment marks order as "completed"
+ *
+ * WOOCOMMERCE DASHBOARD:
+ * All orders sync automatically. Credentials are in .env files:
+ *   WC_API_URL, WC_CONSUMER_KEY, WC_CONSUMER_SECRET
+ * ============================================================
+ */
+
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { calculateDiscounts } from "@/lib/coupon-calculator";
