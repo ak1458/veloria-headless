@@ -9,6 +9,7 @@ interface AddToCartButtonProps {
     id: number;
     name: string;
     slug: string;
+    href?: string;
     price: number;
     image: string;
     category: string;

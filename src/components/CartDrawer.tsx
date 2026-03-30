@@ -50,7 +50,7 @@ export default function CartDrawer({ isOpen, onClose }: CartDrawerProps) {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.3 }}
-            className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50"
+            className="fixed inset-0 bg-black/40 backdrop-blur-sm z-[60]"
             onClick={onClose}
           />
 
@@ -60,7 +60,7 @@ export default function CartDrawer({ isOpen, onClose }: CartDrawerProps) {
             animate={{ x: 0 }}
             exit={{ x: "100%" }}
             transition={{ type: "spring", damping: 30, stiffness: 300 }}
-            className="fixed top-0 right-0 bottom-0 w-full max-w-md bg-[#faf8f5] z-50 shadow-2xl flex flex-col"
+            className="fixed top-0 right-0 h-[100dvh] w-full max-w-md bg-[#faf8f5] z-[60] shadow-2xl flex flex-col"
           >
             {/* Header */}
             <div className="flex items-center justify-between p-6 border-b border-gray-200">
@@ -95,7 +95,10 @@ export default function CartDrawer({ isOpen, onClose }: CartDrawerProps) {
                 </div>
               ) : (
                 <div className="space-y-4">
-                  {items.map((item) => (
+                  {items.map((item) => {
+                    const itemHref = item.href ?? `/product/${item.slug}`;
+
+                    return (
                     <div key={item.id} className="flex gap-4 bg-white p-3 rounded-lg shadow-sm border border-gray-100">
                       <div className="relative w-20 h-20 bg-gray-50 rounded overflow-hidden flex-shrink-0">
                         <Image
@@ -111,7 +114,7 @@ export default function CartDrawer({ isOpen, onClose }: CartDrawerProps) {
                         <div>
                           <p className="text-[10px] text-gray-400 uppercase tracking-wider">{item.category}</p>
                           <h3 className="font-medium text-sm text-gray-800 truncate hover:text-[#b59a5c]">
-                            <Link href={`/product/${item.slug}`} onClick={onClose}>
+                            <Link href={itemHref} onClick={onClose}>
                               {item.name}
                             </Link>
                           </h3>
@@ -147,14 +150,14 @@ export default function CartDrawer({ isOpen, onClose }: CartDrawerProps) {
                         </div>
                       </div>
                     </div>
-                  ))}
+                  )})}
                 </div>
               )}
             </div>
 
             {/* Footer */}
             {items.length > 0 && (
-              <div className="border-t border-gray-200 p-6 space-y-4 bg-white shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)]">
+              <div className="border-t border-gray-200 p-6 pb-24 lg:pb-6 space-y-4 bg-white shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)]">
                 <div className="flex justify-between items-center">
                   <span className="text-gray-600 font-medium">Subtotal</span>
                   <span className="text-lg font-bold text-[#1a1a1a]">₹{subtotal.toLocaleString("en-IN")}</span>

@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { useWishlistStore } from "@/store/wishlist";
 import { useCartStore } from "@/store/cart";
 import { getRelativeProductLink, type WCProduct } from "@/lib/woocommerce";
@@ -15,11 +16,10 @@ interface PremiumProductCardProps {
 export default function PremiumProductCard({
   product,
   imageLoading = "lazy",
-  showWishlist = false,
+  showWishlist = true,
 }: PremiumProductCardProps) {
   const { isInWishlist, toggleItem } = useWishlistStore();
-  const addItem = useCartStore((state) => state.addItem);
-  const openCart = useCartStore((state) => state.openCart);
+  const { addItem, openCart } = useCartStore();
 
   const wishlisted = isInWishlist(product.id);
   const productLink = getRelativeProductLink(product);
@@ -31,45 +31,27 @@ export default function PremiumProductCard({
   const categoryName = product.categories[0]?.name || "Luxury Bag";
 
   const handleWishlist = (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    toggleItem({
-      id: product.id,
-      name: product.name,
-      slug: product.slug,
-      price,
-      originalPrice: onSale ? regularPrice : undefined,
-      image,
-      category: categoryName,
-    });
+    e.preventDefault(); e.stopPropagation();
+    toggleItem({ id: product.id, name: product.name, slug: product.slug, href: productLink, price, image, category: categoryName });
   };
 
   const handleAddToCart = (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    addItem({
-      id: product.id,
-      name: product.name,
-      slug: product.slug,
-      price,
-      image,
-      category: categoryName,
-    });
+    e.preventDefault(); e.stopPropagation();
+    addItem({ id: product.id, name: product.name, slug: product.slug, href: productLink, price, image, category: categoryName });
     openCart();
   };
 
   return (
-    <div className="group flex flex-col h-full">
-      {/* Image Container - Large image with rounded corners */}
+    <div className="group flex flex-col h-full bg-white transition-all duration-300">
+      {/* Image Container - Original rounded-xl design */}
       <Link href={productLink} className="block relative aspect-square overflow-hidden rounded-xl bg-[#e5e2dd]">
-        {/* Wishlist Heart */}
+        
+        {/* Wishlist Icon (Top Right) */}
         {showWishlist && (
           <button
             onClick={handleWishlist}
-            className={`absolute top-3 right-3 z-10 w-8 h-8 rounded-full flex items-center justify-center transition-all ${
-              wishlisted 
-                ? "bg-white text-red-500" 
-                : "bg-white/90 text-gray-600 hover:text-red-500"
+            className={`absolute top-3 right-3 z-10 w-9 h-9 rounded-full flex items-center justify-center transition-all shadow-sm ${
+              wishlisted ? "bg-[#b59a5c] text-white" : "bg-white/90 text-gray-400 hover:text-red-500"
             }`}
             aria-label="Add to Wishlist"
           >
@@ -79,56 +61,65 @@ export default function PremiumProductCard({
 
         {/* Sale Badge */}
         {onSale && (
-          <div className="absolute top-3 left-3 z-10 px-2 py-1 bg-black text-white text-[10px] font-bold tracking-wider rounded">
+          <div className="absolute top-3 left-3 z-10 px-2.5 py-1 bg-black text-white text-[9px] font-bold tracking-[0.2em] rounded bg-opacity-90">
             SALE
           </div>
         )}
 
-        {/* Product Image - Large, fills container */}
-        <img
+        {/* Product Image (Original Scale & Transition) */}
+        <Image
           src={image}
           alt={product.name}
-          className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
-          loading={imageLoading}
+          fill
+          sizes="(max-width: 768px) 50vw, 25vw"
+          className="object-cover transition-transform duration-700 group-hover:scale-110"
+          priority={imageLoading === "eager"}
         />
+        
+        {/* Hover Overlay Button (Quick Add) */}
+        <div className="absolute inset-x-0 bottom-0 p-4 opacity-0 group-hover:opacity-100 transition-opacity translate-y-4 group-hover:translate-y-0 duration-300 pointer-events-none">
+          <button 
+             onClick={handleAddToCart}
+             className="w-full bg-white text-black py-3 rounded-lg text-[10px] font-bold tracking-widest uppercase shadow-xl pointer-events-auto hover:bg-[#b59a5c] hover:text-white transition-colors"
+          >
+             Quick Add
+          </button>
+        </div>
       </Link>
 
-      {/* Product Info - Consistent spacing */}
-      <div className="pt-3 text-center flex flex-col flex-grow">
-        <h3 className="text-sm font-medium text-gray-900 mb-1 leading-tight">
-          <Link href={productLink} className="hover:text-[#b59a5c] transition-colors">
-            {product.name}
-          </Link>
+      {/* Product Info - Original Centered Styling */}
+      <div className="pt-5 text-center flex flex-col items-center flex-grow">
+        <h3 className="text-sm font-serif text-gray-900 mb-1 leading-tight group-hover:text-[#b59a5c] transition-colors">
+          <Link href={productLink}>{product.name}</Link>
         </h3>
         
-        <p className="text-xs text-gray-500 mb-2">{categoryName}</p>
+        <p className="text-[10px] text-gray-400 uppercase tracking-widest mb-3">{categoryName}</p>
         
         {/* Star Rating */}
-        <div className="flex items-center justify-center mb-2">
+        <div className="flex items-center justify-center gap-0.5 mb-3">
           {[...Array(5)].map((_, i) => (
-            <Star key={i} size={12} className="text-[#b59a5c] fill-[#b59a5c]" />
+            <Star key={i} size={10} className="text-[#b59a5c] fill-[#b59a5c]" />
           ))}
         </div>
         
-        {/* Price */}
-        <div className="flex items-center justify-center space-x-2 mb-3">
+        {/* Price Section */}
+        <div className="flex items-center justify-center gap-3 mb-4">
           {onSale && (
-            <span className="text-xs text-gray-400 line-through">
+            <span className="text-[11px] text-gray-300 line-through tracking-tighter decoration-[#b59a5c]">
               &#8377;{regularPrice.toLocaleString("en-IN")}
             </span>
           )}
-          <span className="text-sm font-semibold text-gray-900">
+          <span className="text-sm font-bold text-gray-900 tracking-tight">
             &#8377;{price.toLocaleString("en-IN")}
           </span>
         </div>
 
-        {/* Add to Cart Button - Black like original */}
+        {/* Original Main Button */}
         <button
           onClick={handleAddToCart}
-          className="mt-auto w-full py-2.5 bg-black text-white text-xs font-bold tracking-wider uppercase rounded hover:bg-gray-800 transition-colors"
-          style={{ fontFamily: 'var(--font-lato), sans-serif' }}
+          className="mt-auto w-full py-3 bg-black text-white text-[10px] font-bold tracking-[0.2em] uppercase rounded hover:bg-[#b59a5c] transition-all shadow-md shadow-black/5"
         >
-          ADD TO CART
+          Add to Cart
         </button>
       </div>
     </div>

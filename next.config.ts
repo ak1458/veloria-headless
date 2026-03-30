@@ -8,7 +8,7 @@ const nextConfig: NextConfig = {
   
   trailingSlash: false,
   images: {
-    unoptimized: process.env.NODE_ENV === "development" ? false : true,
+    unoptimized: false,
     remotePatterns: [
       {
         protocol: "https",

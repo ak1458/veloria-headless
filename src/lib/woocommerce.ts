@@ -1,3 +1,5 @@
+import { LEGACY_SITE_URL } from "@/lib/site";
+
 export interface WCImage {
   id: number;
   src: string;
@@ -88,12 +90,23 @@ const DEFAULT_REVALIDATE_SECONDS = 300;
 
 function logToFile(_msg: string) {
   // Silent fallback for client usage
+  void _msg;
 }
 
 interface WCFetchOptions {
   revalidate?: number | false;
   cacheBustVersion?: string | false;
 }
+
+interface LegacyVariationGalleryItem {
+  href?: string;
+  data_src?: string;
+  data_thumb?: string;
+  data_large_image?: string;
+  image?: string;
+}
+
+type LegacyVariationGalleryMap = Record<string, LegacyVariationGalleryItem[]>;
 
 export async function wcFetch<T>(
   endpoint: string,
@@ -176,8 +189,7 @@ function toCatalogProduct(product: Partial<WCProduct>): WCProduct {
       src: image.src,
       alt: image.alt ?? "",
       name: image.name,
-    }))
-    .slice(0, 1);
+    }));
 
   return {
     id: product.id ?? 0,
@@ -279,6 +291,230 @@ function dedupeParentIds(products: Array<Pick<WCProduct, "parent_id">>): number[
   );
 }
 
+const PRODUCT_SLUG_STOP_WORDS = new Set([
+  "bag",
+  "bags",
+  "tote",
+  "satchel",
+  "sling",
+  "wallet",
+  "clutch",
+  "crossbody",
+  "hobo",
+  "shoulder",
+]);
+
+function extractHtmlAttribute(
+  markup: string | undefined,
+  attribute: string,
+): string | null {
+  if (!markup) {
+    return null;
+  }
+
+  const match = markup.match(new RegExp(`${attribute}="([^"]*)"`, "i"));
+  return match?.[1] || null;
+}
+
+function extractSerializedJson(
+  html: string,
+  variableName: string,
+): string | null {
+  const marker = `var ${variableName} =`;
+  const markerIndex = html.indexOf(marker);
+
+  if (markerIndex === -1) {
+    return null;
+  }
+
+  let startIndex = markerIndex + marker.length;
+  while (/\s/.test(html[startIndex] ?? "")) {
+    startIndex += 1;
+  }
+
+  const openingChar = html[startIndex];
+  const closingChar =
+    openingChar === "{"
+      ? "}"
+      : openingChar === "["
+        ? "]"
+        : null;
+
+  if (!closingChar) {
+    return null;
+  }
+
+  let depth = 0;
+  let inString = false;
+  let escaped = false;
+
+  for (let index = startIndex; index < html.length; index += 1) {
+    const char = html[index];
+
+    if (inString) {
+      if (escaped) {
+        escaped = false;
+        continue;
+      }
+
+      if (char === "\\") {
+        escaped = true;
+        continue;
+      }
+
+      if (char === '"') {
+        inString = false;
+      }
+
+      continue;
+    }
+
+    if (char === '"') {
+      inString = true;
+      continue;
+    }
+
+    if (char === openingChar) {
+      depth += 1;
+      continue;
+    }
+
+    if (char === closingChar) {
+      depth -= 1;
+
+      if (depth === 0) {
+        return html.slice(startIndex, index + 1);
+      }
+    }
+  }
+
+  return null;
+}
+
+function extractProductSlugFromPermalink(permalink?: string | null): string | null {
+  if (!permalink) {
+    return null;
+  }
+
+  try {
+    const url = new URL(permalink, LEGACY_SITE_URL);
+    const pathParts = url.pathname
+      .split("/")
+      .filter(Boolean)
+      .map((part) => part.toLowerCase());
+    const productIndex = pathParts.indexOf("product");
+    const slug = pathParts[productIndex + 1];
+
+    return slug ? fallbackSlug(slug) : null;
+  } catch {
+    return null;
+  }
+}
+
+async function getLegacyVariationGalleryMap(
+  productPermalink?: string,
+): Promise<LegacyVariationGalleryMap> {
+  if (!productPermalink) {
+    return {};
+  }
+
+  try {
+    const legacyUrl = new URL(productPermalink, LEGACY_SITE_URL);
+    const response = await fetch(legacyUrl.toString(), {
+      next: { revalidate: DEFAULT_REVALIDATE_SECONDS },
+    });
+
+    if (!response.ok) {
+      throw new Error(`Legacy product page error: ${response.status}`);
+    }
+
+    const html = await response.text();
+    const serialized = extractSerializedJson(
+      html,
+      "woodmart_variation_gallery_data",
+    );
+
+    if (!serialized) {
+      return {};
+    }
+
+    const parsed = JSON.parse(serialized) as LegacyVariationGalleryMap;
+    return parsed && typeof parsed === "object" ? parsed : {};
+  } catch (error) {
+    console.error("Error fetching legacy variation gallery:", error);
+    return {};
+  }
+}
+
+function buildVariationImagesFromLegacyGallery(
+  variation: WCProduct,
+  galleryItems: LegacyVariationGalleryItem[] | undefined,
+): WCImage[] {
+  const featuredImage = variation.image
+    ? {
+        id: variation.image.id,
+        src: variation.image.src,
+        alt: variation.image.alt ?? variation.name ?? "",
+        name: variation.image.name,
+      }
+    : null;
+
+  const parsedImages = (galleryItems ?? [])
+    .map((item, index) => {
+      const src =
+        item.href ||
+        item.data_large_image ||
+        item.data_src ||
+        extractHtmlAttribute(item.image, "data-large_image") ||
+        extractHtmlAttribute(item.image, "src") ||
+        item.data_thumb;
+
+      if (!src) {
+        return null;
+      }
+
+      return {
+        id:
+          featuredImage?.src === src
+            ? featuredImage.id
+            : variation.id * 100 + index + 1,
+        src,
+        alt:
+          extractHtmlAttribute(item.image, "alt") ||
+          extractHtmlAttribute(item.image, "title") ||
+          variation.name ||
+          "",
+      };
+    })
+    .filter((image): image is WCImage => Boolean(image));
+
+  const images = [];
+  const seen = new Set<string>();
+
+  for (const image of parsedImages) {
+    if (seen.has(image.src)) {
+      continue;
+    }
+
+    seen.add(image.src);
+    images.push(image);
+  }
+
+  if (featuredImage && !seen.has(featuredImage.src)) {
+    images.unshift(featuredImage);
+  }
+
+  if (images.length) {
+    return images;
+  }
+
+  if (variation.images?.length) {
+    return variation.images;
+  }
+
+  return featuredImage ? [featuredImage] : [];
+}
+
 async function getParentProductsFromVariations(search?: string): Promise<WCProduct[]> {
   const variations = await getProducts({
     per_page: 100,
@@ -310,21 +546,101 @@ export async function getProductById(id: number): Promise<WCProduct | null> {
 
 export async function getProductBySlug(slug: string): Promise<WCProduct | null> {
   try {
-    const products = await getProducts({ slug, per_page: 10 });
-    
-    // 1. Try to find the parent product first
-    const parent = products.find((p) => p.parent_id === 0 && p.type !== "variation");
-    if (parent) return parent;
+    const normalizedSlug = fallbackSlug(slug);
 
-    // 2. If not found, check if the slug matched a variation and get its parent
-    const variation = products.find((p) => p.parent_id > 0);
-    if (variation?.parent_id) {
-      return await getProductById(variation.parent_id);
+    const hydrateMatchedProduct = async (
+      matchedProduct: WCProduct | null,
+    ): Promise<WCProduct | null> => {
+      if (!matchedProduct) {
+        return null;
+      }
+
+      if (matchedProduct.parent_id > 0) {
+        return getProductById(matchedProduct.parent_id);
+      }
+
+      return matchedProduct;
+    };
+
+    const buildSlugAliases = (value: string): string[] => {
+      const normalizedValue = fallbackSlug(value);
+      const aliases = new Set<string>([normalizedValue]);
+      const trimmedTokens = normalizedValue
+        .split("-")
+        .filter(Boolean)
+        .filter((token) => !PRODUCT_SLUG_STOP_WORDS.has(token));
+
+      if (trimmedTokens.length) {
+        aliases.add(trimmedTokens.join("-"));
+      }
+
+      return Array.from(aliases).filter(Boolean);
+    };
+
+    const findMatchedProduct = (
+      products: WCProduct[],
+      requestedSlug: string,
+    ): WCProduct | null => {
+      const aliases = new Set(buildSlugAliases(requestedSlug));
+      const exactMatchers = [
+        (product: WCProduct) => {
+          const permalinkSlug = extractProductSlugFromPermalink(product.permalink);
+          return permalinkSlug ? aliases.has(permalinkSlug) : false;
+        },
+        (product: WCProduct) => aliases.has(fallbackSlug(product.slug)),
+        (product: WCProduct) => aliases.has(fallbackSlug(product.name)),
+      ];
+
+      for (const matcher of exactMatchers) {
+        const parentMatch =
+          products.find(
+            (product) => product.parent_id === 0 && product.type !== "variation" && matcher(product),
+          ) ?? null;
+
+        if (parentMatch) {
+          return parentMatch;
+        }
+
+        const anyMatch = products.find((product) => matcher(product)) ?? null;
+        if (anyMatch) {
+          return anyMatch;
+        }
+      }
+
+      return null;
+    };
+
+    const products = await getProducts({ slug: normalizedSlug, per_page: 10 });
+    const directMatch = await hydrateMatchedProduct(
+      findMatchedProduct(products, normalizedSlug),
+    );
+
+    if (directMatch) {
+      return directMatch;
     }
 
-    // 3. Last resort: try exact slug match if API filtering was fuzzy
-    const exactMatch = products.find(p => p.slug === slug);
-    if (exactMatch) return exactMatch;
+    const searchTerms = Array.from(
+      new Set(
+        buildSlugAliases(normalizedSlug).flatMap((value) => [
+          value,
+          value.replace(/-/g, " "),
+        ]),
+      ),
+    );
+
+    for (const searchTerm of searchTerms) {
+      const searchMatches = await getProducts({
+        search: searchTerm,
+        per_page: 40,
+      });
+      const matchedProduct = await hydrateMatchedProduct(
+        findMatchedProduct(searchMatches, normalizedSlug),
+      );
+
+      if (matchedProduct) {
+        return matchedProduct;
+      }
+    }
 
     return null;
   } catch (error) {
@@ -333,19 +649,26 @@ export async function getProductBySlug(slug: string): Promise<WCProduct | null> 
   }
 }
 
-export async function getProductVariations(productId: number): Promise<WCProduct[]> {
+export async function getProductVariations(
+  productId: number,
+  productPermalink?: string,
+): Promise<WCProduct[]> {
   try {
-    const variations = await wcFetch<WCProduct[]>(`/products/${productId}/variations`, {
-      per_page: 100,
-      orderby: "menu_order",
-      order: "asc",
-    });
+    const [variations, legacyVariationGalleryMap] = await Promise.all([
+      wcFetch<WCProduct[]>(`/products/${productId}/variations`, {
+        per_page: 100,
+        orderby: "menu_order",
+        order: "asc",
+      }),
+      getLegacyVariationGalleryMap(productPermalink),
+    ]);
 
-    // Keep variations as-is to avoid N+1 request timeouts on Vercel
-    return variations.map(v => ({
-      ...v,
-      // Ensure images array exists even if it only contains the variation's featured image
-      images: v.images?.length ? v.images : (v.image ? [v.image] : [])
+    return variations.map((variation) => ({
+      ...variation,
+      images: buildVariationImagesFromLegacyGallery(
+        variation,
+        legacyVariationGalleryMap[String(variation.id)],
+      ),
     }));
   } catch (error) {
     console.error("Error fetching product variations:", error);
@@ -498,23 +821,10 @@ export function getRelativeProductLink(product: WCProduct, parentSlug?: string):
 
   // For variations, we need the parent slug
   // Try to extract parent slug from permalink or use provided one
-  let slug = parentSlug ?? product.slug;
-  
-  // If this is a variation and we have a permalink, try to extract parent slug
-  if (product.parent_id > 0 && product.permalink) {
-    try {
-      const url = new URL(product.permalink);
-      const pathParts = url.pathname.split("/").filter(Boolean);
-      // WooCommerce permalinks are like /product/parent-product-slug/
-      const productIndex = pathParts.indexOf("product");
-      if (productIndex >= 0 && pathParts[productIndex + 1]) {
-        slug = pathParts[productIndex + 1];
-      }
-    } catch {
-      // Use fallback slug
-    }
-  }
-  
+  const slug =
+    extractProductSlugFromPermalink(product.permalink) ??
+    parentSlug ??
+    product.slug;
   const colorValue = getVariationQueryValue(product);
   return colorValue ? `/product/${slug}?attribute_pa_color=${colorValue}` : `/product/${slug}`;
 }

@@ -17,6 +17,7 @@ export default function WishlistPage() {
       id: item.id,
       name: item.name,
       slug: item.slug,
+      href: item.href,
       price: item.price,
       image: item.image,
       category: item.category,
@@ -30,6 +31,7 @@ export default function WishlistPage() {
         id: item.id,
         name: item.name,
         slug: item.slug,
+        href: item.href,
         price: item.price,
         image: item.image,
         category: item.category,
@@ -119,7 +121,10 @@ export default function WishlistPage() {
               className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-5 md:gap-7"
             >
               <AnimatePresence>
-                {items.map((item, index) => (
+                {items.map((item, index) => {
+                  const itemHref = item.href ?? `/product/${item.slug}`;
+
+                  return (
                   <motion.div
                     key={item.id}
                     layout
@@ -131,7 +136,7 @@ export default function WishlistPage() {
                   >
                     {/* Image */}
                     <div className="relative aspect-square bg-[#f0ede8] overflow-hidden flex-shrink-0">
-                      <Link href={`/product/${item.slug}`}>
+                      <Link href={itemHref}>
                         <Image
                           src={item.image || "/placeholder.jpg"}
                           alt={item.name}
@@ -164,7 +169,7 @@ export default function WishlistPage() {
                         <p className="text-[9px] md:text-[10px] text-[#b59a5c] uppercase tracking-[0.2em] mb-1.5 font-bold">
                           {item.category}
                         </p>
-                        <Link href={`/product/${item.slug}`}>
+                        <Link href={itemHref}>
                           <h3 className="text-sm md:text-base font-medium text-gray-900 line-clamp-2 mb-2 leading-snug hover:text-[#b59a5c] transition-colors">
                             {item.name}
                           </h3>
@@ -190,7 +195,7 @@ export default function WishlistPage() {
                       </button>
                     </div>
                   </motion.div>
-                ))}
+                )})}
               </AnimatePresence>
             </motion.div>
           )}

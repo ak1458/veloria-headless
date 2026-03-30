@@ -1,7 +1,7 @@
 "use client";
 
-import Link from "next/link";
 import Image from "next/image";
+import Link from "next/link";
 import { useState, useEffect, useCallback } from "react";
 import { useCartStore } from "@/store/cart";
 import { useWishlistStore } from "@/store/wishlist";
@@ -25,10 +25,10 @@ const NAV_ITEMS: NavItem[] = [
       {
         title: "By Style",
         items: [
-          { label: "Tote Bag", href: "/product-category/tote-bag" },
-          { label: "Sling Bag", href: "/product-category/sling-bag" },
-          { label: "Clutch", href: "/product-category/clutch" },
-          { label: "Handbag", href: "/product-category/hand-bag" },
+          { label: "Tote Bags", href: "/product-category/tote-bag" },
+          { label: "Sling Bags", href: "/product-category/sling-bag" },
+          { label: "Clutch Bags", href: "/product-category/clutch" },
+          { label: "Hand Bag", href: "/product-category/hand-bag" },
           { label: "Crossbody", href: "/product-category/crossbody" },
           { label: "Satchel Bag", href: "/product-category/satchel-bag" },
         ]
@@ -36,8 +36,17 @@ const NAV_ITEMS: NavItem[] = [
       {
         title: "Collections",
         items: [
-          { label: "Wallet", href: "/product-category/wallet" },
-          { label: "New Arrivals", href: "/shop" },
+          { label: "New Arrivals", href: "/shop?new=true" },
+          { label: "Best Sellers", href: "/shop?bestseller=true" },
+          { label: "Minimalist Series", href: "/shop?collection=minimalist" },
+        ]
+      },
+      {
+        title: "Shop By Tag",
+        items: [
+          { label: "Leather", href: "/shop?tag=leather" },
+          { label: "Handmade", href: "/shop?tag=handmade" },
+          { label: "Travel", href: "/shop?tag=travel" },
         ]
       }
     ]
@@ -124,18 +133,18 @@ export default function PremiumHeader() {
           <div className="container mx-auto px-4 sm:px-6">
             <div className="flex items-center justify-between py-4">
               <div className="flex-1" />
-              <Link href="/" className="block relative h-12 w-48">
+              <Link href="/" className="block">
                 <Image
                   src={DESKTOP_LOGO}
                   alt="Veloria Vault"
-                  fill
-                  className="object-contain"
+                  width={196}
+                  height={48}
                   priority
-                  sizes="192px"
+                  className="h-12 w-auto transition-all duration-300"
                 />
               </Link>
               <div className="flex-1 flex items-center justify-end space-x-4">
-                <Link href="/account" className="text-xs tracking-wider text-gray-600 hover:text-black cursor-pointer transition-colors">
+                <Link href="/account" className="text-xs tracking-wider text-gray-600 hover:text-black cursor-pointer transition-colors font-bold">
                   LOGIN / REGISTER
                 </Link>
                 <Link
@@ -234,14 +243,14 @@ export default function PremiumHeader() {
               </button>
 
               {/* Logo - Shifted right with padding for visual centering */}
-              <Link href="/" className="block pl-4 relative h-10 w-40">
+              <Link href="/" className="block pl-4">
                 <Image
                   src={MOBILE_LOGO}
                   alt="Veloria Vault"
-                  fill
-                  className="object-contain"
+                  width={130}
+                  height={40}
                   priority
-                  sizes="160px"
+                  className="h-10 w-auto"
                 />
               </Link>
 
@@ -294,13 +303,13 @@ export default function PremiumHeader() {
           >
             <div className="flex flex-col h-full">
               <div className="flex items-center justify-between p-4 border-b border-gray-200">
-                <Link href="/" onClick={closeMobileMenu} className="relative h-10 w-40">
-                  <Image 
+                <Link href="/" onClick={closeMobileMenu}>
+                  <Image
                     src={MOBILE_LOGO} 
                     alt="Veloria Vault" 
-                    fill
-                    className="object-contain"
-                    sizes="160px"
+                    width={130}
+                    height={40}
+                    className="h-10 w-auto"
                   />
                 </Link>
                 <button
@@ -374,12 +383,12 @@ export default function PremiumHeader() {
                   <ul className="space-y-1">
                     <li>
                       <Link
-                        href="/my-account"
+                        href="/account"
                         onClick={closeMobileMenu}
-                        className="flex items-center space-x-3 py-2 text-gray-600 hover:text-black"
+                        className="flex items-center space-x-3 py-2 text-gray-600 hover:text-black font-bold"
                       >
                         <User size={18} />
-                        <span>My Account</span>
+                        <span>Login / Register</span>
                       </Link>
                     </li>
                     <li>

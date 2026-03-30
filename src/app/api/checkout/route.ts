@@ -30,14 +30,20 @@ import { getProductsByIds } from "@/lib/woocommerce";
 import { verifyToken } from "@/lib/auth/jwt";
 import jwt from "jsonwebtoken";
 
+// Basic HTML sanitizer for security
+function stripHtmlTags(str: string) {
+  return str.replace(/</g, "&lt;").replace(/>/g, "&gt;").trim();
+}
+
 const checkoutSchema = z.object({
-  email: z.string().email("Invalid email address"),
-  firstName: z.string().min(1, "First name is required"),
-  lastName: z.string().min(1, "Last name is required"),
-  address: z.string().min(5, "Address is required"),
-  city: z.string().min(2, "City is required"),
-  postalCode: z.string().min(4, "Valid postal code is required"),
-  phone: z.string().min(10, "Valid phone number is required"),
+  email: z.string().email("Invalid email address").transform(stripHtmlTags),
+  firstName: z.string().min(1, "First name is required").transform(stripHtmlTags),
+  lastName: z.string().min(1, "Last name is required").transform(stripHtmlTags),
+  address: z.string().min(5, "Address is required").transform(stripHtmlTags),
+  city: z.string().min(2, "City is required").transform(stripHtmlTags),
+  state: z.string().min(2, "State is required").transform(stripHtmlTags),
+  postalCode: z.string().min(4, "Valid postal code is required").transform(stripHtmlTags),
+  phone: z.string().min(10, "Valid phone number is required").transform(stripHtmlTags),
   paymentMethod: z.enum(["card", "cod"]),
   shippingMethod: z.enum(["standard", "express"]),
   isPrepaid: z.boolean().default(true),
@@ -179,7 +185,7 @@ export async function POST(request: NextRequest) {
         address_1: validatedData.address,
         address_2: "",
         city: validatedData.city,
-        state: "",
+        state: validatedData.state,
         postcode: validatedData.postalCode,
         country: "IN",
         email: validatedData.email,
@@ -191,7 +197,7 @@ export async function POST(request: NextRequest) {
         address_1: validatedData.address,
         address_2: "",
         city: validatedData.city,
-        state: "",
+        state: validatedData.state,
         postcode: validatedData.postalCode,
         country: "IN",
       },

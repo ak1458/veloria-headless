@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { useState } from "react";
 import { Mail, Phone, Send } from "lucide-react";
 
@@ -202,10 +203,12 @@ export default function ContactUsPage() {
             {/* Image & Info */}
             <div className="space-y-8">
               <div className="relative aspect-[4/3] rounded-lg overflow-hidden">
-                <img
+                <Image
                   src="https://veloriavault.com/wp-content/uploads/2026/01/Bag-14-15-16-4-scaled.jpg"
                   alt="Veloria Vault Collection"
-                  className="w-full h-full object-cover"
+                  fill
+                  sizes="(min-width: 1024px) 40vw, 100vw"
+                  className="object-cover"
                 />
               </div>
               

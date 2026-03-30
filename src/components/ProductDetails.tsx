@@ -1,639 +1,929 @@
 "use client";
 
-import { useState, useMemo, useCallback, useEffect } from "react";
-import Link from "next/link";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Image from "next/image";
+import Link from "next/link";
 import { useSearchParams } from "next/navigation";
+import DOMPurify from "isomorphic-dompurify";
+import {
+  Check,
+  ChevronDown,
+  ChevronLeft,
+  ChevronRight,
+  ChevronUp,
+  Copy,
+  Heart,
+  LayoutGrid,
+  Maximize2,
+  Minus,
+  Plus,
+  Star,
+  X,
+} from "lucide-react";
+import {
+  getRelativeProductLink,
+  getVariationQueryValue,
+  type WCProduct,
+} from "@/lib/woocommerce";
 import { useCartStore } from "@/store/cart";
 import { useWishlistStore } from "@/store/wishlist";
-import type { WCProduct } from "@/lib/woocommerce";
-import { Heart, ChevronLeft, ChevronRight, Star, Check, Minus, Plus } from "lucide-react";
-import ProductReviews from "./ProductReviews";
-import DOMPurify from "isomorphic-dompurify";
 
 interface ProductDetailsProps {
   product: WCProduct;
   variations: WCProduct[];
 }
 
-/* ─────────────────────────── Variation helpers ─────────────────────────── */
-
 interface VariationOption {
   id: number;
   color: string;
-  /** The variation's own featured image from WC REST API (image.src) */
+  queryValue: string;
   swatchImage: string;
-  price: string;
-  regularPrice: string;
-  salePrice: string;
-  onSale: boolean;
-  stockStatus: string;
   product: WCProduct;
 }
 
-/**
- * Build variation options from WC REST API data.
- * WooCommerce variations expose a single `image` object (not `images` array).
- * Each variation's image is its own featured/swatch image.
- */
-function buildVariationOptions(variations: WCProduct[]): VariationOption[] {
-  return variations
-    .map((v) => {
-      const colorAttr = v.attributes.find(
-        (a) =>
-          a.slug === "pa_color" ||
-          a.name.toLowerCase().includes("color") ||
-          a.name.toLowerCase().includes("colour")
-      );
-      if (!colorAttr?.option) return null;
+interface GalleryImage {
+  id: number;
+  src: string;
+  alt: string;
+}
 
-      // WC REST API v3: variation response has `image` (singular object)
-      // with { id, src, ... }.  We also fallback to `images[0]` if present.
-      const img = v.image?.src || v.images?.[0]?.src || "";
+const DESKTOP_VISIBLE_THUMBS = 3;
+
+function sanitizeHtml(html: string) {
+  return DOMPurify.sanitize(html);
+}
+
+function toQueryValue(value: string) {
+  return value
+    .trim()
+    .toLowerCase()
+    .replace(/&/g, " and ")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/(^-|-$)/g, "");
+}
+
+function buildVariationOptions(
+  variations: WCProduct[],
+  fallbackImage: string,
+): VariationOption[] {
+  return variations
+    .map((variation) => {
+      const colorAttr = variation.attributes.find(
+        (attribute) =>
+          attribute.slug === "pa_color" ||
+          attribute.name.toLowerCase().includes("color"),
+      );
+
+      if (!colorAttr?.option) {
+        return null;
+      }
 
       return {
-        id: v.id,
+        id: variation.id,
         color: colorAttr.option,
-        swatchImage: img,
-        price: v.price,
-        regularPrice: v.regular_price,
-        salePrice: v.sale_price,
-        onSale: v.on_sale,
-        stockStatus: v.stock_status,
-        product: v,
-      } satisfies VariationOption;
+        queryValue:
+          getVariationQueryValue(variation) ?? toQueryValue(colorAttr.option),
+        swatchImage:
+          variation.image?.src ?? variation.images?.[0]?.src ?? fallbackImage,
+        product: variation,
+      };
     })
-    .filter(Boolean) as VariationOption[];
+    .filter((option): option is VariationOption => Boolean(option));
 }
 
-/**
- * Build the image gallery for the current state.
- *
- * Each WooCommerce variation has its OWN full `images[]` array containing
- * multiple angle shots of that specific color. When a variation is selected,
- * we simply show that variation's images. Simple.
- */
-function buildGallery(
+function getGalleryImages(
   product: WCProduct,
-  selectedVariation: WCProduct | null
-): { id: number; src: string; alt: string }[] {
-  const fallback = [{ id: 0, src: "/images/bag-placeholder.svg", alt: product.name }];
+  selectedVariation: WCProduct | null,
+): GalleryImage[] {
+  const baseImages = (product.images ?? [])
+    .filter((image) => Boolean(image?.src))
+    .map((image, index) => ({
+      id: image.id || index,
+      src: image.src,
+      alt: image.alt || `${product.name} ${index + 1}`,
+    }));
 
-  if (selectedVariation && selectedVariation.images?.length > 0) {
-    // Show the selected variant's own gallery (all angles of this color)
-    return selectedVariation.images;
+  if (!selectedVariation) {
+    return baseImages;
   }
 
-  // No variation selected → show parent product images
-  return product.images?.length > 0 ? product.images : fallback;
+  const variationImages = (selectedVariation.images ?? [])
+    .filter((image) => Boolean(image?.src))
+    .map((image, index) => ({
+      id: image.id || selectedVariation.id * 100 + index + 1,
+      src: image.src,
+      alt: image.alt || `${selectedVariation.name || product.name} ${index + 1}`,
+    }));
+
+  if (variationImages.length > 0) {
+    return variationImages;
+  }
+
+  const featuredImageSrc = selectedVariation.image?.src;
+
+  if (!featuredImageSrc) {
+    return baseImages;
+  }
+
+  return [
+    {
+      id: selectedVariation.image?.id || selectedVariation.id,
+      src: featuredImageSrc,
+      alt: selectedVariation.image?.alt || selectedVariation.name || product.name,
+    },
+  ];
 }
 
-/* ════════════════════════════ Component ════════════════════════════ */
+function getColorName(product: WCProduct | null) {
+  return (
+    product?.attributes.find(
+      (attribute) =>
+        attribute.slug === "pa_color" ||
+        attribute.name.toLowerCase().includes("color"),
+    )?.option ?? ""
+  );
+}
 
-export default function ProductDetails({ product, variations }: ProductDetailsProps) {
-  const [selectedImage, setSelectedImage] = useState(0);
-  const [quantity, setQuantity] = useState(1);
-  const [activeTab, setActiveTab] = useState("description");
-  const [selectedVariation, setSelectedVariation] = useState<WCProduct | null>(null);
-  const [thumbsIndex, setThumbsIndex] = useState(0);
+function formatPrice(value: number) {
+  return value.toLocaleString("en-IN", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
+}
 
+export default function ProductDetails({
+  product,
+  variations,
+}: ProductDetailsProps) {
   const searchParams = useSearchParams();
+  const selectedColorParam = searchParams.get("attribute_pa_color");
+
   const addItem = useCartStore((state) => state.addItem);
   const openCart = useCartStore((state) => state.openCart);
-  const { isInWishlist, toggleItem } = useWishlistStore();
+  const toggleWishlist = useWishlistStore((state) => state.toggleItem);
+  const wishlistItems = useWishlistStore((state) => state.items);
 
-  const wishlisted = isInWishlist(product.id);
+  const [manualVariationId, setManualVariationId] = useState<
+    number | "cleared" | null
+  >(null);
+  const [selectedImage, setSelectedImage] = useState(0);
+  const [quantity, setQuantity] = useState(1);
+  const [thumbsIndex, setThumbsIndex] = useState(0);
+  const [isZoomOpen, setIsZoomOpen] = useState(false);
+  const [isLinkCopied, setIsLinkCopied] = useState(false);
 
-  // ── Memoised data ──
+  const mobileGalleryRef = useRef<HTMLDivElement | null>(null);
+
+  const categoryName = product.categories?.[0]?.name || "Bags";
+  const categorySlug = product.categories?.[0]?.slug || "";
+  const categoryHref = categorySlug ? `/product-category/${categorySlug}` : "/shop";
+  const fallbackImage = product.images?.[0]?.src ?? "";
+
   const variationOptions = useMemo(
-    () => buildVariationOptions(variations),
-    [variations]
+    () => buildVariationOptions(variations, fallbackImage),
+    [variations, fallbackImage],
   );
 
-  // Sync selected variation with URL parameter on mount
-  useEffect(() => {
-    const colorParam = searchParams.get("attribute_pa_color");
-    if (colorParam && variationOptions.length > 0 && !selectedVariation) {
-      const match = variationOptions.find(
-        (opt) => opt.color.toLowerCase().replace(/\s+/g, "-") === colorParam.toLowerCase()
-      );
-      if (match) {
-        setSelectedVariation(match.product);
-        setSelectedImage(0);
-        setThumbsIndex(0);
-      }
+  const defaultVariationId = useMemo(() => {
+    const leadImageSrc = product.images?.[0]?.src;
+
+    if (!leadImageSrc) {
+      return null;
     }
-  }, [searchParams, variationOptions, selectedVariation]);
 
-  const images = useMemo(
-    () => buildGallery(product, selectedVariation),
-    [product, selectedVariation]
+    return (
+      variationOptions.find((option) => option.swatchImage === leadImageSrc)?.id ??
+      null
+    );
+  }, [product.images, variationOptions]);
+
+  const urlVariationId = useMemo(() => {
+    if (!selectedColorParam) {
+      return null;
+    }
+
+    return (
+      variationOptions.find((option) => option.queryValue === selectedColorParam)
+        ?.id ?? null
+    );
+  }, [selectedColorParam, variationOptions]);
+
+  const selectedVariationId =
+    manualVariationId === "cleared"
+      ? null
+      : manualVariationId ?? urlVariationId ?? defaultVariationId;
+
+  const selectedVariation = useMemo(
+    () =>
+      variationOptions.find((option) => option.id === selectedVariationId)
+        ?.product ?? null,
+    [selectedVariationId, variationOptions],
   );
 
-  const displayProduct = selectedVariation || product;
+  const galleryImages = useMemo(
+    () => getGalleryImages(product, selectedVariation),
+    [product, selectedVariation],
+  );
+
+  const displayProduct = selectedVariation ?? product;
+  const activeImageIndex = galleryImages.length
+    ? Math.min(selectedImage, galleryImages.length - 1)
+    : 0;
+  const currentImage = galleryImages[activeImageIndex] ?? galleryImages[0] ?? null;
   const price = Number(displayProduct.price || displayProduct.regular_price || 0);
   const regularPrice = Number(displayProduct.regular_price || 0);
-  const onSale = displayProduct.on_sale && price < regularPrice;
-  const categoryName = product.categories?.[0]?.name || "Luxury Bag";
-  const categorySlug = product.categories?.[0]?.slug || "bags";
+  const showRegularPrice =
+    displayProduct.on_sale && regularPrice > 0 && regularPrice > price;
+  const isInStock = displayProduct.stock_status !== "outofstock";
+  const currentColor = getColorName(selectedVariation) || getColorName(product);
+  const displayProductLink = getRelativeProductLink(
+    selectedVariation ?? product,
+    product.slug,
+  );
+  const wishlisted = wishlistItems.some((item) => item.id === displayProduct.id);
+  // Use actual review data - no fake defaults
+  const reviewCount = product.rating_count || 0;
+  const ratingValue = product.average_rating ? Math.round(Number(product.average_rating)) : 0;
+  useEffect(() => {
+    if (!isZoomOpen) {
+      return;
+    }
 
-  // ── Handlers ──
-  const handlePrevImage = useCallback(() => {
-    setSelectedImage((prev) => (prev === 0 ? images.length - 1 : prev - 1));
-  }, [images.length]);
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setIsZoomOpen(false);
+      }
+    };
 
-  const handleNextImage = useCallback(() => {
-    setSelectedImage((prev) => (prev === images.length - 1 ? 0 : prev + 1));
-  }, [images.length]);
+    document.body.style.overflow = "hidden";
+    window.addEventListener("keydown", handleEscape);
 
-  /** Click a thumbnail → just navigate to that image (all same color) */
-  const handleThumbnailClick = useCallback(
-    (index: number) => setSelectedImage(index),
-    []
+    return () => {
+      document.body.style.overflow = "";
+      window.removeEventListener("keydown", handleEscape);
+    };
+  }, [isZoomOpen]);
+
+  const maxThumbIndex = Math.max(
+    0,
+    galleryImages.length - DESKTOP_VISIBLE_THUMBS,
+  );
+  const resolvedThumbsIndex = Math.min(
+    maxThumbIndex,
+    Math.max(
+      0,
+      activeImageIndex < thumbsIndex
+        ? activeImageIndex
+        : activeImageIndex >= thumbsIndex + DESKTOP_VISIBLE_THUMBS
+          ? activeImageIndex - DESKTOP_VISIBLE_THUMBS + 1
+          : thumbsIndex,
+    ),
+  );
+
+  const scrollMobileGalleryTo = useCallback(
+    (index: number, behavior: ScrollBehavior = "smooth") => {
+      const container = mobileGalleryRef.current;
+
+      if (!container) {
+        return;
+      }
+
+      container.scrollTo({
+        left: container.clientWidth * index,
+        behavior,
+      });
+    },
+    [],
+  );
+
+  const selectImage = useCallback(
+    (index: number, syncMobile = false) => {
+      const boundedIndex = Math.max(0, Math.min(index, galleryImages.length - 1));
+      setSelectedImage(boundedIndex);
+
+      if (syncMobile) {
+        scrollMobileGalleryTo(boundedIndex);
+      }
+    },
+    [galleryImages.length, scrollMobileGalleryTo],
+  );
+
+  const handlePrevImage = useCallback(
+    (syncMobile = false) => {
+      if (!galleryImages.length) {
+        return;
+      }
+
+      const nextIndex =
+        activeImageIndex === 0 ? galleryImages.length - 1 : activeImageIndex - 1;
+      selectImage(nextIndex, syncMobile);
+    },
+    [activeImageIndex, galleryImages.length, selectImage],
+  );
+
+  const handleNextImage = useCallback(
+    (syncMobile = false) => {
+      if (!galleryImages.length) {
+        return;
+      }
+
+      const nextIndex =
+        activeImageIndex === galleryImages.length - 1 ? 0 : activeImageIndex + 1;
+      selectImage(nextIndex, syncMobile);
+    },
+    [activeImageIndex, galleryImages.length, selectImage],
   );
 
   const handleVariationSelect = useCallback(
     (option: VariationOption) => {
-      // Toggle off if same variation clicked again
-      if (selectedVariation?.id === option.id) {
-        setSelectedVariation(null);
-      } else {
-        setSelectedVariation(option.product);
-      }
-      // Always reset gallery position for instant feel
+      setManualVariationId(
+        selectedVariationId === option.id ? "cleared" : option.id,
+      );
       setSelectedImage(0);
       setThumbsIndex(0);
+      if (mobileGalleryRef.current) {
+        mobileGalleryRef.current.scrollTo({ left: 0, behavior: "auto" });
+      }
     },
-    [selectedVariation]
+    [selectedVariationId],
   );
 
-  const handleClearVariation = useCallback(() => {
-    setSelectedVariation(null);
-    setSelectedImage(0);
-    setThumbsIndex(0);
-  }, []);
+  const handleMobileGalleryScroll = useCallback(() => {
+    const container = mobileGalleryRef.current;
 
-  const handleAddToCart = () => {
-    addItem({
-      id: displayProduct.id,
-      name: displayProduct.name,
-      slug: displayProduct.slug,
-      price,
-      image: images[selectedImage]?.src || "",
-      category: categoryName,
-    }, quantity);
+    if (!container || container.clientWidth === 0) {
+      return;
+    }
+
+    const nextIndex = Math.round(container.scrollLeft / container.clientWidth);
+    if (nextIndex !== activeImageIndex) {
+      setSelectedImage(nextIndex);
+    }
+  }, [activeImageIndex]);
+
+  const handleAddToCart = useCallback(() => {
+    addItem(
+      {
+        id: displayProduct.id,
+        name: displayProduct.name,
+        slug: displayProduct.slug,
+        href: displayProductLink,
+        price,
+        image: currentImage?.src || fallbackImage,
+        category: categoryName,
+      },
+      quantity,
+    );
     openCart();
-  };
+  }, [
+    addItem,
+    categoryName,
+    currentImage?.src,
+    displayProduct.id,
+    displayProductLink,
+    displayProduct.name,
+    displayProduct.slug,
+    fallbackImage,
+    openCart,
+    price,
+    quantity,
+  ]);
 
-  const handleWishlistToggle = () => {
-    toggleItem({
+  const handleWishlistToggle = useCallback(() => {
+    toggleWishlist({
       id: displayProduct.id,
       name: displayProduct.name,
       slug: displayProduct.slug,
+      href: displayProductLink,
       price,
-      originalPrice: onSale ? regularPrice : undefined,
-      image: images[selectedImage]?.src || "",
+      originalPrice: showRegularPrice ? regularPrice : undefined,
+      image: currentImage?.src || fallbackImage,
       category: categoryName,
     });
-  };
+  }, [
+    categoryName,
+    currentImage?.src,
+    displayProduct.id,
+    displayProductLink,
+    displayProduct.name,
+    displayProduct.slug,
+    fallbackImage,
+    price,
+    regularPrice,
+    showRegularPrice,
+    toggleWishlist,
+  ]);
 
-  const tabs = [
-    { id: "description", label: "DESCRIPTION" },
-    { id: "additional", label: "ADDITIONAL INFO" },
-    { id: "reviews", label: `REVIEWS (${product.rating_count || 0})` },
-    { id: "shipping", label: "SHIPPING" },
-  ];
+  const handleCopyLink = useCallback(async () => {
+    const urlToCopy =
+      typeof window !== "undefined"
+        ? window.location.href
+        : product.permalink || displayProductLink;
+
+    try {
+      if (!navigator.clipboard?.writeText) {
+        throw new Error("Clipboard API unavailable");
+      }
+
+      await navigator.clipboard.writeText(urlToCopy);
+      setIsLinkCopied(true);
+      window.setTimeout(() => setIsLinkCopied(false), 2000);
+    } catch {
+      setIsLinkCopied(false);
+    }
+  }, [displayProductLink, product.permalink]);
 
   return (
-    <div className="min-h-screen bg-[#faf8f5]">
-      {/* Main Product Section */}
-      <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-5 min-h-screen bg-[#faf8f5] px-4 md:px-6">
-        {/* ─────────── Image Gallery ─────────── */}
-        <div className="lg:col-span-7 bg-[#faf8f5] p-4">
-          <div className="flex flex-col md:flex-row gap-4">
-            {/* Desktop Thumbnails (Vertical Slider) */}
-            {images.length > 1 && (
-              <div className="hidden md:flex flex-col items-center gap-2 w-24 flex-shrink-0">
-                <button 
-                  onClick={() => setThumbsIndex(Math.max(0, thumbsIndex - 1))}
-                  disabled={thumbsIndex === 0}
-                  className={`p-1 transition-colors ${thumbsIndex === 0 ? "text-gray-300 cursor-not-allowed" : "text-gray-600 hover:text-[#b59a5c]"}`}
+    <div className="bg-[#fbfaf7] pb-24 lg:pb-14">
+      <section className="mx-auto max-w-[1320px] px-3 pb-10 pt-5 sm:px-6 lg:px-8 lg:pt-8">
+        <div className="grid gap-8 lg:grid-cols-[minmax(0,1.02fr)_minmax(360px,0.98fr)] xl:gap-10">
+          <div className="min-w-0">
+            <div className="hidden lg:grid lg:grid-cols-[108px_minmax(0,1fr)] lg:gap-4">
+              {galleryImages.length > 1 && (
+                <div className="flex flex-col items-center gap-4">
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setThumbsIndex(Math.max(0, resolvedThumbsIndex - 1))
+                    }
+                    disabled={resolvedThumbsIndex === 0}
+                    className="text-[#9b917f] transition hover:text-[#241d14] disabled:cursor-not-allowed disabled:opacity-35"
+                    aria-label="Previous thumbnails"
+                  >
+                    <ChevronUp size={18} />
+                  </button>
+
+                  <div className="flex w-full flex-col gap-3">
+                    {galleryImages
+                      .slice(
+                        resolvedThumbsIndex,
+                        resolvedThumbsIndex + DESKTOP_VISIBLE_THUMBS,
+                      )
+                      .map((image, index) => {
+                        const imageIndex = resolvedThumbsIndex + index;
+                        const isActive = imageIndex === activeImageIndex;
+
+                        return (
+                          <button
+                            key={`${image.id}-${imageIndex}`}
+                            type="button"
+                            onClick={() => selectImage(imageIndex)}
+                            className={`relative aspect-square overflow-hidden border border-[#e9e2d5] transition ${
+                              isActive
+                                ? "opacity-100 shadow-[0_0_0_1px_#b7924e_inset]"
+                                : "opacity-40 hover:opacity-100"
+                            }`}
+                            aria-label={`Show image ${imageIndex + 1}`}
+                          >
+                            <Image
+                              src={image.src}
+                              alt={image.alt}
+                              fill
+                              sizes="108px"
+                              className="object-cover"
+                            />
+                          </button>
+                        );
+                      })}
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setThumbsIndex(
+                        Math.min(maxThumbIndex, resolvedThumbsIndex + 1),
+                      )
+                    }
+                    disabled={resolvedThumbsIndex >= maxThumbIndex}
+                    className="text-[#9b917f] transition hover:text-[#241d14] disabled:cursor-not-allowed disabled:opacity-35"
+                    aria-label="More thumbnails"
+                  >
+                    <ChevronDown size={18} />
+                  </button>
+                </div>
+              )}
+
+              <div className="relative aspect-square overflow-hidden">
+                {currentImage ? (
+                  <button
+                    type="button"
+                    onClick={() => setIsZoomOpen(true)}
+                    className="relative block h-full w-full cursor-zoom-in"
+                    aria-label="Open image preview"
+                  >
+                    <Image
+                      src={currentImage.src}
+                      alt={currentImage.alt}
+                      fill
+                      priority
+                      sizes="(min-width: 1280px) 760px, (min-width: 1024px) 58vw, 100vw"
+                      className="object-contain"
+                    />
+                    <span className="absolute bottom-4 left-4 flex h-14 w-14 items-center justify-center rounded-full bg-white text-[#6f6143] shadow-[0_12px_25px_rgba(0,0,0,0.08)]">
+                      <Maximize2 size={18} />
+                    </span>
+                  </button>
+                ) : (
+                  <div className="aspect-square bg-[#f1ece3]" />
+                )}
+              </div>
+            </div>
+
+            <div className="lg:hidden">
+              <div className="relative -mx-1 overflow-hidden sm:mx-0">
+                <div
+                  ref={mobileGalleryRef}
+                  onScroll={handleMobileGalleryScroll}
+                  className="flex snap-x snap-mandatory overflow-x-auto scrollbar-hide"
                 >
-                  <ChevronLeft size={20} className="rotate-90" />
+                  {galleryImages.map((image, index) => (
+                    <div
+                      key={`${image.id}-${index}`}
+                      className="relative aspect-[1.08/1] min-w-full snap-center overflow-hidden"
+                    >
+                      <Image
+                        src={image.src}
+                        alt={image.alt}
+                        fill
+                        priority={index === 0}
+                        sizes="100vw"
+                        className="object-contain"
+                      />
+                    </div>
+                  ))}
+                </div>
+
+                {galleryImages.length > 1 && (
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => handlePrevImage(true)}
+                      className="absolute left-3 top-1/2 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full bg-white/88 text-[#746a5a] shadow-[0_10px_25px_rgba(0,0,0,0.08)]"
+                      aria-label="Previous image"
+                    >
+                      <ChevronLeft size={18} />
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => handleNextImage(true)}
+                      className="absolute right-3 top-1/2 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full bg-white/88 text-[#746a5a] shadow-[0_10px_25px_rgba(0,0,0,0.08)]"
+                      aria-label="Next image"
+                    >
+                      <ChevronRight size={18} />
+                    </button>
+                  </>
+                )}
+
+                <button
+                  type="button"
+                  onClick={() => setIsZoomOpen(true)}
+                  className="absolute bottom-4 left-4 flex h-14 w-14 items-center justify-center rounded-full bg-white text-[#6f6143] shadow-[0_12px_25px_rgba(0,0,0,0.08)]"
+                  aria-label="Open image preview"
+                >
+                  <Maximize2 size={18} />
                 </button>
-                
-                <div className="flex flex-col gap-3 w-full">
-                  {images.slice(thumbsIndex, thumbsIndex + 3).map((image, i) => {
-                    const globalIndex = thumbsIndex + i; 
+              </div>
+
+              {galleryImages.length > 1 && (
+                <div className="mt-2 flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
+                  {galleryImages.map((image, index) => (
+                    <button
+                      key={`${image.id}-thumb-${index}`}
+                      type="button"
+                      onClick={() => selectImage(index, true)}
+                      className={`relative h-[82px] w-[82px] shrink-0 overflow-hidden border border-[#e8e0d3] transition ${
+                        activeImageIndex === index
+                          ? "opacity-100 shadow-[0_0_0_1px_#b7924e_inset]"
+                          : "opacity-45"
+                      }`}
+                      aria-label={`Show image ${index + 1}`}
+                    >
+                      <Image
+                        src={image.src}
+                        alt={image.alt}
+                        fill
+                        sizes="96px"
+                        className="object-cover"
+                      />
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+
+          <div className="min-w-0 lg:sticky lg:top-28 lg:self-start">
+            <div className="mb-7 flex items-start justify-between gap-4">
+              <nav
+                aria-label="Breadcrumb"
+                className="flex flex-wrap items-center gap-2 text-[14px] text-[#8e8578]"
+              >
+                <Link href="/" className="transition hover:text-[#211a12]">
+                  Home
+                </Link>
+                <span>/</span>
+                <Link href={categoryHref} className="transition hover:text-[#211a12]">
+                  {categoryName}
+                </Link>
+                <span className="hidden sm:inline">/</span>
+                <span className="hidden font-medium text-[#211a12] sm:inline">
+                  {product.name}
+                </span>
+              </nav>
+
+              <div className="flex items-center gap-4 text-[#8d6f3b]">
+                <Link
+                  href={categoryHref}
+                  aria-label="Back to category"
+                  className="transition hover:text-[#211a12]"
+                >
+                  <LayoutGrid size={15} />
+                </Link>
+                <Link
+                  href={categoryHref}
+                  aria-label="View next product"
+                  className="transition hover:text-[#211a12]"
+                >
+                  <ChevronRight size={18} />
+                </Link>
+              </div>
+            </div>
+
+            <h1 className="font-serif text-[2.25rem] leading-none text-[#1f1a13] sm:text-[2.6rem] lg:text-[3.35rem]">
+              {product.name}
+            </h1>
+
+            {reviewCount > 0 && (
+              <div className="mt-5 flex items-center gap-3">
+                <div className="flex items-center gap-0.5 text-[#e0b31c]">
+                  {Array.from({ length: 5 }).map((_, index) => (
+                    <Star
+                      key={index}
+                      size={15}
+                      fill={index < ratingValue ? "currentColor" : "none"}
+                      className={index < ratingValue ? "" : "text-[#d9cfbf]"}
+                    />
+                  ))}
+                </div>
+                <span className="text-[15px] text-[#766e62]">
+                  ({reviewCount} customer reviews)
+                </span>
+              </div>
+            )}
+
+            <div className="mt-5 text-[2rem] font-medium leading-none text-[#bc9a54] sm:text-[2.2rem] lg:text-[2.45rem]">
+              ₹{formatPrice(price)}
+            </div>
+
+            <div className="mt-6 max-w-[34rem] text-[15px] leading-[1.85] text-[#5c564d] [&_em]:font-serif [&_p]:m-0]">
+              {product.short_description ? (
+                <div
+                  dangerouslySetInnerHTML={{
+                    __html: sanitizeHtml(product.short_description),
+                  }}
+                />
+              ) : product.description ? (
+                <div
+                  dangerouslySetInnerHTML={{
+                    __html: sanitizeHtml(product.description.substring(0, 300) + (product.description.length > 300 ? '...' : '')),
+                  }}
+                />
+              ) : null}
+            </div>
+
+            {variationOptions.length > 0 && (
+              <div className="mt-8">
+                <div className="mb-3 flex items-center gap-2 text-[15px]">
+                  <span className="font-semibold text-[#1f1a13]">color:</span>
+                  <span className="text-[#766e62]">
+                    {currentColor || variationOptions[0]?.color}
+                  </span>
+                </div>
+
+                <div className="flex flex-wrap items-end gap-3">
+                  {variationOptions.map((option) => {
+                    const isActive = selectedVariation?.id === option.id;
+
                     return (
                       <button
-                        key={`thumb-${globalIndex}-${image.src}`}
-                        onClick={() => handleThumbnailClick(globalIndex)}
-                        className={`aspect-square w-full bg-white overflow-hidden border-2 transition-all relative ${
-                          selectedImage === globalIndex 
-                            ? "border-[#b59a5c]" 
-                            : "border-gray-100 hover:border-gray-300"
-                        }`}
+                        key={option.id}
+                        type="button"
+                        onClick={() => handleVariationSelect(option)}
+                        className="group flex flex-col items-center gap-2"
+                        aria-label={`Select ${option.color}`}
                       >
-                        <Image
-                          src={image.src}
-                          alt={image.alt || `${product.name} ${globalIndex + 1}`}
-                          fill
-                          className="object-cover"
-                          sizes="96px"
+                        <span
+                          className={`relative flex h-9 w-9 items-center justify-center overflow-hidden rounded-full border border-[#ddd4c7] transition sm:h-10 sm:w-10 ${
+                            isActive
+                              ? "shadow-[0_0_0_1px_#211a12_inset]"
+                              : "opacity-70 hover:opacity-100"
+                          }`}
+                        >
+                          <Image
+                            src={option.swatchImage}
+                            alt={option.color}
+                            fill
+                            sizes="40px"
+                            className="object-cover"
+                          />
+                        </span>
+                        <span
+                          className={`h-[2px] w-6 bg-[#211a12] transition ${
+                            isActive
+                              ? "opacity-100"
+                              : "opacity-0 group-hover:opacity-40"
+                          }`}
                         />
                       </button>
                     );
                   })}
-                </div>
 
-                <button 
-                  onClick={() => setThumbsIndex(Math.min(images.length - 3, thumbsIndex + 1))}
-                  disabled={thumbsIndex >= images.length - 3}
-                  className={`p-1 transition-colors ${thumbsIndex >= images.length - 3 ? "text-gray-300 cursor-not-allowed" : "text-gray-600 hover:text-[#b59a5c]"}`}
-                >
-                  <ChevronRight size={20} className="rotate-90" />
-                </button>
+                  {selectedVariation && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setManualVariationId("cleared");
+                        setSelectedImage(0);
+                        setThumbsIndex(0);
+                        if (mobileGalleryRef.current) {
+                          mobileGalleryRef.current.scrollTo({
+                            left: 0,
+                            behavior: "auto",
+                          });
+                        }
+                      }}
+                      className="pb-1 text-[14px] text-[#8b8376] transition hover:text-[#211a12]"
+                    >
+                      Clear
+                    </button>
+                  )}
+                </div>
               </div>
             )}
 
-            {/* Main Featured Image Container */}
-            <div className="flex-1 relative aspect-square flex items-center justify-center overflow-hidden group">
-              <Image
-                key={images[selectedImage]?.src}
-                src={images[selectedImage]?.src}
-                alt={images[selectedImage]?.alt || product.name}
-                fill
-                className="object-cover"
-                sizes="(max-width: 768px) 100vw, 60vw"
-                priority
+            <div className="mt-7 flex items-center gap-2 text-[15px]">
+              <Check
+                size={18}
+                strokeWidth={2.5}
+                className={isInStock ? "text-[#b7924e]" : "text-red-500"}
               />
-              {/* Navigation Arrows */}
-              {images.length > 1 && (
+              <span className="font-medium text-[#1f1a13]">
+                {isInStock ? "In stock" : "Out of stock"}
+              </span>
+            </div>
+
+            <div className="mt-6 flex flex-col gap-4 sm:flex-row sm:items-stretch">
+              <div className="flex h-[52px] w-[132px] items-center border border-[#ded5c9] bg-white">
+                <button
+                  type="button"
+                  onClick={() => setQuantity((current) => Math.max(1, current - 1))}
+                  className="flex h-full w-11 items-center justify-center text-[#4e483f] transition hover:bg-[#f6f1e7]"
+                  aria-label="Decrease quantity"
+                >
+                  <Minus size={15} />
+                </button>
+
+                <span className="flex-1 text-center text-[16px] text-[#1f1a13]">
+                  {quantity}
+                </span>
+
+                <button
+                  type="button"
+                  onClick={() => setQuantity((current) => current + 1)}
+                  className="flex h-full w-11 items-center justify-center text-[#4e483f] transition hover:bg-[#f6f1e7]"
+                  aria-label="Increase quantity"
+                >
+                  <Plus size={15} />
+                </button>
+              </div>
+
+              <button
+                type="button"
+                onClick={handleAddToCart}
+                disabled={!isInStock}
+                className="h-[52px] min-w-[190px] bg-[#b89a57] px-8 text-[14px] font-medium uppercase tracking-[0.02em] text-white transition hover:bg-[#a98a48] disabled:cursor-not-allowed disabled:bg-[#d7c69f]"
+              >
+                Add to cart
+              </button>
+            </div>
+
+            <div className="mt-6 flex flex-wrap items-center gap-x-8 gap-y-3 border-b border-[#e6dfd2] pb-6 text-[15px] text-[#29231b]">
+              <button
+                type="button"
+                onClick={handleWishlistToggle}
+                className={`flex items-center gap-2 transition ${
+                  wishlisted ? "text-[#b25b5b]" : "hover:text-[#b25b5b]"
+                }`}
+              >
+                <Heart size={16} fill={wishlisted ? "currentColor" : "none"} />
+                <span>Add to wishlist</span>
+              </button>
+            </div>
+
+            <div className="mt-6 space-y-4 text-[15px] leading-6 text-[#5f584f]">
+              <p>
+                <span className="font-semibold text-[#1f1a13]">Category:</span>{" "}
+                <Link href={categoryHref} className="transition hover:text-[#b18d48]">
+                  {categoryName}
+                </Link>
+              </p>
+
+              <p>
+                <span className="font-semibold text-[#1f1a13]">Tag:</span>{" "}
+                {product.name}
+              </p>
+
+              <div className="flex flex-wrap items-center gap-4 pt-1">
+                <span className="font-semibold text-[#1f1a13]">Share:</span>
+                <button
+                  type="button"
+                  onClick={handleCopyLink}
+                  className="inline-flex items-center gap-2 text-[#5e564b] transition hover:text-[#b18d48]"
+                >
+                  <Copy size={15} />
+                  <span>{isLinkCopied ? "Link copied" : "Copy link"}</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {isZoomOpen && currentImage && (
+        <div className="fixed inset-0 z-[70] bg-[rgba(18,15,11,0.94)] px-4 py-6 sm:px-6 lg:px-10">
+          <div className="flex h-full flex-col">
+            <div className="mb-4 flex items-center justify-end">
+              <button
+                type="button"
+                onClick={() => setIsZoomOpen(false)}
+                className="flex h-11 w-11 items-center justify-center rounded-full bg-white/10 text-white transition hover:bg-white/18"
+                aria-label="Close preview"
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            <div className="relative flex-1">
+              <Image
+                src={currentImage.src}
+                alt={currentImage.alt}
+                fill
+                sizes="100vw"
+                className="object-contain"
+              />
+
+              {galleryImages.length > 1 && (
                 <>
                   <button
-                    onClick={handlePrevImage}
-                    className="absolute left-4 top-1/2 -translate-y-1/2 w-10 h-10 bg-white/80 rounded-full flex items-center justify-center shadow-sm opacity-0 group-hover:opacity-100 hover:bg-white transition-all"
+                    type="button"
+                    onClick={() => handlePrevImage()}
+                    className="absolute left-0 top-1/2 flex h-12 w-12 -translate-y-1/2 items-center justify-center rounded-full bg-white/10 text-white transition hover:bg-white/18"
+                    aria-label="Previous image"
                   >
-                    <ChevronLeft size={20} className="text-gray-700" />
+                    <ChevronLeft size={22} />
                   </button>
+
                   <button
-                    onClick={handleNextImage}
-                    className="absolute right-4 top-1/2 -translate-y-1/2 w-10 h-10 bg-white/80 rounded-full flex items-center justify-center shadow-sm opacity-0 group-hover:opacity-100 hover:bg-white transition-all"
+                    type="button"
+                    onClick={() => handleNextImage()}
+                    className="absolute right-0 top-1/2 flex h-12 w-12 -translate-y-1/2 items-center justify-center rounded-full bg-white/10 text-white transition hover:bg-white/18"
+                    aria-label="Next image"
                   >
-                    <ChevronRight size={20} className="text-gray-700" />
+                    <ChevronRight size={22} />
                   </button>
                 </>
               )}
             </div>
-          </div>
 
-          {/* Mobile Thumbnail Gallery (Horizontal) */}
-          {images.length > 1 && (
-            <div className="flex md:hidden gap-2 overflow-x-auto px-1 pb-4 pt-4 scrollbar-hide">
-              {images.map((image, index) => (
-                <button
-                  key={`mobile-${index}-${image.src}`}
-                  onClick={() => handleThumbnailClick(index)}
-                  className={`flex-shrink-0 w-20 h-20 bg-white rounded-lg overflow-hidden border-2 transition-all relative ${
-                    selectedImage === index 
-                      ? "border-[#b59a5c]" 
-                      : "border-transparent"
-                  }`}
-                >
-                  <Image
-                    src={image.src}
-                    alt={image.alt || `${product.name} ${index + 1}`}
-                    fill
-                    className="object-cover"
-                    sizes="80px"
-                  />
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
-
-        {/* ─────────── Product Info – Sticky sidebar ─────────── */}
-        <div className="lg:col-span-5 lg:sticky lg:top-20 lg:h-[calc(100vh-80px)] lg:overflow-y-auto px-4 py-8 md:p-12 md:px-16 bg-[#faf8f5] flex flex-col">
-          {/* Breadcrumb */}
-          <nav className="flex items-center text-sm mb-4">
-            <div className="flex items-center text-gray-500">
-              <Link href="/" className="hover:text-black transition-colors">Home</Link>
-              <span className="mx-2">/</span>
-              <Link href={`/shop?category=${categorySlug}`} className="hover:text-black transition-colors capitalize">
-                {categoryName}
-              </Link>
-            </div>
-          </nav>
-
-          {/* Title */}
-          <h1 className="text-xl md:text-2xl font-serif text-gray-900 mb-3">
-            {product.name}
-          </h1>
-
-          {/* Reviews */}
-          <div className="flex items-center gap-2 mb-3">
-            <div className="flex items-center">
-              {[...Array(5)].map((_, i) => (
-                <Star 
-                  key={i} 
-                  size={14} 
-                  className={i < (Math.round(Number(product.average_rating)) || 5) 
-                    ? "text-[#b59a5c] fill-[#b59a5c]" 
-                    : "text-gray-300"
-                  } 
-                />
-              ))}
-            </div>
-            <span className="text-xs text-gray-500">
-              ({product.rating_count || 3} customer reviews)
-            </span>
-          </div>
-
-          {/* Price */}
-          <div className="flex items-baseline gap-2 mb-4">
-            <span className="text-xl md:text-2xl font-semibold text-[#b59a5c]">
-              &#8377;{price.toLocaleString("en-IN")}.00
-            </span>
-            {onSale && (
-              <span className="text-sm text-gray-400 line-through">
-                &#8377;{regularPrice.toLocaleString("en-IN")}.00
-              </span>
-            )}
-          </div>
-
-          {/* Short Description */}
-          <div className="text-gray-600 text-sm leading-relaxed mb-5">
-            {product.short_description ? (
-              <div dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(product.short_description) }} />
-            ) : (
-              <p>Some bags are for special occasions. <em className="italic">{product.name}</em> is for every occasion. It&apos;s just as perfect sitting next to you at a café while you sketch on your iPad as it is on a weekend getaway.</p>
-            )}
-          </div>
-
-          {/* ─── Image Swatches (Product images, NOT plain colors) ─── */}
-          {variationOptions.length > 0 && (
-            <div className="mb-5">
-              <div className="flex items-center gap-2 mb-3">
-                <span className="text-sm font-medium text-gray-700">color:</span>
-                <span className="text-sm text-gray-900">
-                  {selectedVariation
-                    ? selectedVariation.attributes.find((a) => a.slug === "pa_color")?.option
-                    : variationOptions[0]?.color}
-                </span>
-              </div>
-              
-              {/* Image Swatches – each swatch shows the variant's own product image */}
-              <div className="flex flex-wrap items-center gap-3 mb-2">
-                {variationOptions.map((option) => {
-                  const isSelected = selectedVariation?.id === option.id;
-                  return (
-                    <button
-                      key={option.id}
-                      onClick={() => handleVariationSelect(option)}
-                      className={`group relative w-12 h-12 md:w-14 md:h-14 rounded-full overflow-hidden transition-all duration-200 ${
-                        isSelected
-                          ? "ring-2 ring-[#b59a5c] ring-offset-2 ring-offset-[#faf8f5] scale-110" 
-                          : "ring-1 ring-gray-200 hover:scale-105 hover:ring-2 hover:ring-gray-300 hover:ring-offset-2 hover:ring-offset-[#faf8f5]"
-                      }`}
-                      title={option.color}
-                    >
-                      {/* Swatch product image */}
-                      {option.swatchImage ? (
-                        <Image
-                          src={option.swatchImage}
-                          alt={option.color}
-                          fill
-                          className="object-cover"
-                          sizes="56px"
-                        />
-                      ) : (
-                        /* Fallback: gray circle if no image for some reason */
-                        <span className="block w-full h-full bg-gray-200" />
-                      )}
-                      
-                      {/* Selected checkmark overlay */}
-                      {isSelected && (
-                        <span className="absolute inset-0 flex items-center justify-center bg-black/25">
-                          <Check 
-                            size={16} 
-                            className="text-white drop-shadow-md" 
-                            strokeWidth={3}
-                          />
-                        </span>
-                      )}
-                      
-                      {/* Tooltip on hover */}
-                      <span className="absolute -bottom-8 left-1/2 -translate-x-1/2 px-2 py-1 bg-gray-800 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-20">
-                        {option.color}
-                      </span>
-                    </button>
-                  );
-                })}
-              </div>
-              
-              {/* Clear Button */}
-              {selectedVariation && (
-                <button 
-                  onClick={handleClearVariation}
-                  className="text-xs text-gray-500 hover:text-[#b59a5c] flex items-center gap-1 mt-2"
-                >
-                  <span>×</span> Clear selection
-                </button>
-              )}
-            </div>
-          )}
-
-          {/* Stock Status */}
-          <div className="flex items-center gap-2 text-sm mb-5">
-            <Check size={16} className="text-green-600" />
-            <span className="text-green-600 font-medium">In stock</span>
-          </div>
-
-          {/* Quantity and Add to Cart */}
-          <div className="flex items-center gap-3 mb-5">
-            {/* Quantity Selector */}
-            <div className="flex items-center border border-gray-300 h-11 bg-white">
-              <button
-                onClick={() => setQuantity(Math.max(1, quantity - 1))}
-                className="px-3 h-full hover:bg-gray-100 transition-colors text-gray-600"
-              >
-                <Minus size={14} />
-              </button>
-              <span className="px-3 min-w-[40px] text-center font-medium text-sm">{quantity}</span>
-              <button
-                onClick={() => setQuantity(quantity + 1)}
-                className="px-3 h-full hover:bg-gray-100 transition-colors text-gray-600"
-              >
-                <Plus size={14} />
-              </button>
-            </div>
-
-            {/* Add to Cart Button */}
-            <button
-              onClick={handleAddToCart}
-              className="flex-1 h-11 bg-[#b59a5c] text-white font-medium tracking-wider uppercase text-sm hover:bg-[#a08a4f] transition-colors"
-            >
-              ADD TO CART
-            </button>
-          </div>
-
-          {/* Wishlist */}
-          <div className="flex items-center justify-end pt-4 border-t border-gray-200 mb-6">
-            <button 
-              onClick={handleWishlistToggle}
-              className="flex items-center gap-2 text-gray-600 hover:text-red-500 transition-colors text-sm"
-            >
-              <Heart size={16} fill={wishlisted ? "currentColor" : "none"} />
-              <span>{wishlisted ? "Remove from wishlist" : "Add to wishlist"}</span>
-            </button>
-          </div>
-
-          {/* Meta Info */}
-          <div className="space-y-2 text-sm text-gray-600 pb-6 border-b border-gray-200">
-            {displayProduct.sku && (
-              <div className="flex gap-2">
-                <span className="text-gray-900 font-medium">SKU:</span>
-                <span>{displayProduct.sku}</span>
-              </div>
-            )}
-            <div className="flex gap-2">
-              <span className="text-gray-900 font-medium">Category:</span>
-              <Link href={`/shop?category=${categorySlug}`} className="hover:text-[#b59a5c] capitalize">
-                {categoryName}
-              </Link>
-            </div>
-          </div>
-
-        </div>
-      </div>
-
-      {/* Tabs Section */}
-      <div className="bg-white border-t border-gray-100 mt-12">
-        <div className="max-w-7xl mx-auto px-4">
-          <div className="border-b border-gray-200 overflow-x-auto">
-            <div className="flex min-w-max">
-              {tabs.map((tab) => (
-                <button
-                  key={tab.id}
-                  onClick={() => setActiveTab(tab.id)}
-                  className={`py-4 px-6 text-sm font-medium tracking-wide transition-colors relative whitespace-nowrap ${
-                    activeTab === tab.id 
-                      ? "text-gray-900" 
-                      : "text-gray-500 hover:text-gray-700"
-                  }`}
-                >
-                  {tab.label}
-                  {activeTab === tab.id && (
-                    <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#b59a5c]" />
-                  )}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Tab Content */}
-          <div className="px-4 py-8 md:py-12">
-            {activeTab === "description" && (
-              <div className="prose prose-sm max-w-none text-gray-600 leading-relaxed">
-                {product.description ? (
-                  <div dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(product.description) }} />
-                ) : (
-                  <>
-                    <p className="mb-4">Some bags are for special occasions. <em>{product.name}</em> is for every occasion. It&apos;s just as perfect sitting next to you at a café while you sketch on your iPad as it is on a weekend getaway.</p>
-                    <ul className="space-y-2 mb-4 list-none pl-0">
-                      {[
-                        "Zip pocket and slip pocket for easy organisation",
-                        "Space for a 10-inch iPad",
-                        "Pen holder and card slots for quick access",
-                        "Dog-hook keychain to keep keys secure",
-                        "Magnetic button inside for small metallic accessories",
-                        "Detachable and adjustable shoulder strap",
-                      ].map((feature, i) => (
-                        <li key={i} className="flex items-start gap-2">
-                          <span className="text-[#b59a5c] mt-1">•</span>
-                          <span>{feature}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  </>
-                )}
-              </div>
-            )}
-
-            {activeTab === "additional" && (
-              <table className="w-full text-sm">
-                <tbody>
-                  {product.dimensions && (
-                    <>
-                      {product.dimensions.length !== "0" && (
-                        <tr className="border-b border-gray-50">
-                          <td className="py-3 text-gray-700 font-medium w-1/3">Length</td>
-                          <td className="py-3 text-gray-500">{product.dimensions.length} cm</td>
-                        </tr>
-                      )}
-                      {product.dimensions.width !== "0" && (
-                        <tr className="border-b border-gray-50">
-                          <td className="py-3 text-gray-700 font-medium w-1/3">Width</td>
-                          <td className="py-3 text-gray-500">{product.dimensions.width} cm</td>
-                        </tr>
-                      )}
-                      {product.dimensions.height !== "0" && (
-                        <tr className="border-b border-gray-50">
-                          <td className="py-3 text-gray-700 font-medium w-1/3">Height</td>
-                          <td className="py-3 text-gray-500">{product.dimensions.height} cm</td>
-                        </tr>
-                      )}
-                    </>
-                  )}
-                  {product.weight && product.weight !== "0" && (
-                    <tr className="border-b border-gray-50">
-                      <td className="py-3 text-gray-700 font-medium w-1/3">Weight</td>
-                      <td className="py-3 text-gray-500">{product.weight} kg</td>
-                    </tr>
-                  )}
-                  {product.attributes.filter(attr => attr.visible).map((attr) => (
-                    <tr key={attr.id} className="border-b border-gray-50 last:border-0">
-                      <td className="py-3 text-gray-700 font-medium w-1/3">{attr.name}</td>
-                      <td className="py-3 text-gray-500">{attr.options?.join(", ") || attr.option}</td>
-                    </tr>
-                  ))}
-                  {(!product.dimensions || (product.dimensions.length === "0" && product.dimensions.width === "0" && product.dimensions.height === "0")) && 
-                   (!product.weight || product.weight === "0") && 
-                   product.attributes.filter(attr => attr.visible).length === 0 && (
-                    <tr>
-                      <td colSpan={2} className="py-8 text-center text-gray-500">
-                        No additional information available.
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            )}
-
-            {activeTab === "reviews" && (
-              <ProductReviews 
-                productId={product.id}
-                averageRating={product.average_rating}
-                reviewCount={product.rating_count}
-              />
-            )}
-
-            {activeTab === "shipping" && (
-              <div className="prose prose-sm text-gray-600">
-                <p className="mb-3">We offer free shipping on all orders above ₹3000. Orders are typically processed within 1-2 business days.</p>
-                <ul className="space-y-1 list-none pl-0">
-                  <li>• Free shipping on orders above ₹3000</li>
-                  <li>• Standard delivery: 5-7 business days</li>
-                  <li>• Cash on delivery available</li>
-                </ul>
+            {galleryImages.length > 1 && (
+              <div className="mt-6 flex gap-3 overflow-x-auto pb-1 scrollbar-hide">
+                {galleryImages.map((image, index) => (
+                  <button
+                    key={`${image.id}-zoom-${index}`}
+                    type="button"
+                    onClick={() => setSelectedImage(index)}
+                    className={`relative h-24 w-24 shrink-0 overflow-hidden border transition ${
+                      activeImageIndex === index
+                        ? "border-[#b7924e] opacity-100"
+                        : "border-white/20 opacity-45"
+                    }`}
+                    aria-label={`Preview image ${index + 1}`}
+                  >
+                    <Image
+                      src={image.src}
+                      alt={image.alt}
+                      fill
+                      sizes="96px"
+                      className="object-cover"
+                    />
+                  </button>
+                ))}
               </div>
             )}
           </div>
         </div>
-      </div>
-
+      )}
     </div>
   );
 }

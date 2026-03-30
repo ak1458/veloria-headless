@@ -39,7 +39,7 @@ export default function RegisterPage() {
 
       router.push("/account");
       router.refresh();
-    } catch (err) {
+    } catch {
       setError("Something went wrong. Please try again.");
       setLoading(false);
     }

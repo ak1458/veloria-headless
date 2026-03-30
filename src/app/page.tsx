@@ -1,6 +1,6 @@
 import LegacyHomePage from "@/components/LegacyHomePage";
 
-export const dynamic = "force-dynamic";
+export const revalidate = 300;
 
 export const metadata = {
   title: "Veloria Vault | Luxury Leather Handbags",

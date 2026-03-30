@@ -56,7 +56,10 @@ export default function CartPage() {
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
               {/* Cart Items List */}
               <div className="lg:col-span-2 space-y-4">
-                {items.map((item) => (
+                {items.map((item) => {
+                  const itemHref = item.href ?? `/product/${item.slug}`;
+
+                  return (
                   <motion.div
                     key={item.id}
                     initial={{ opacity: 0, y: 20 }}
@@ -80,7 +83,7 @@ export default function CartPage() {
                           <div>
                             <p className="text-[10px] text-gray-400 uppercase tracking-wider mb-1">{item.category}</p>
                             <h3 className="font-semibold text-sm md:text-base text-gray-900 truncate hover:text-[#b59a5c] transition-colors">
-                              <Link href={`/product/${item.slug}`}>
+                              <Link href={itemHref}>
                                 {item.name}
                               </Link>
                             </h3>
@@ -122,7 +125,7 @@ export default function CartPage() {
                       </div>
                     </div>
                   </motion.div>
-                ))}
+                )})}
 
                 {/* Trust Badges */}
                 <div className="grid grid-cols-3 gap-3 pt-4">

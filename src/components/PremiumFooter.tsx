@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { Instagram, Facebook, Twitter, Mail, ArrowUp } from "lucide-react";
+import { Instagram, Facebook, ArrowUp, Loader2, CheckCircle } from "lucide-react";
+import { useState } from "react";
 
 const COLLECTIONS = [
   { label: "Tote Bags", href: "/product-category/tote-bag" },
@@ -22,8 +23,45 @@ const IMPORTANT_LINKS = [
 ];
 
 export default function PremiumFooter() {
+  const [email, setEmail] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+  const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
+
   const scrollToTop = () => {
     window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
+  const handleSubscribe = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!email.trim()) {
+      setMessage({ type: "error", text: "Please enter your email address" });
+      return;
+    }
+
+    setIsLoading(true);
+    setMessage(null);
+
+    try {
+      const response = await fetch("/api/newsletter", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        setMessage({ type: "success", text: data.message });
+        setEmail("");
+      } else {
+        setMessage({ type: "error", text: data.error || "Failed to subscribe" });
+      }
+    } catch (error) {
+      setMessage({ type: "error", text: "Something went wrong. Please try again." });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -111,18 +149,35 @@ export default function PremiumFooter() {
             <p className="text-gray-400 text-sm mb-4">
               Subscribe for early access to new drops and exclusive offers.
             </p>
-            <form className="flex flex-col space-y-3" onSubmit={(e) => e.preventDefault()}>
+            <form className="flex flex-col space-y-3" onSubmit={handleSubscribe}>
               <input
                 type="email"
                 placeholder="Enter your email"
-                className="px-4 py-3 bg-white/10 border border-white/20 rounded-none text-white text-sm placeholder:text-gray-500 focus:outline-none focus:border-[#b59a5c] transition-colors"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                disabled={isLoading}
+                className="px-4 py-3 bg-white/10 border border-white/20 rounded-none text-white text-sm placeholder:text-gray-500 focus:outline-none focus:border-[#b59a5c] transition-colors disabled:opacity-50"
               />
               <button
                 type="submit"
-                className="px-4 py-3 bg-[#b59a5c] text-white text-sm font-medium hover:bg-[#a08a4f] transition-colors"
+                disabled={isLoading}
+                className="px-4 py-3 bg-[#b59a5c] text-white text-sm font-medium hover:bg-[#a08a4f] transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
               >
-                Subscribe
+                {isLoading ? (
+                  <>
+                    <Loader2 size={16} className="animate-spin" />
+                    <span>Subscribing...</span>
+                  </>
+                ) : (
+                  <span>Subscribe</span>
+                )}
               </button>
+              {message && (
+                <div className={`flex items-center gap-2 text-xs ${message.type === "success" ? "text-green-400" : "text-red-400"}`}>
+                  {message.type === "success" && <CheckCircle size={14} />}
+                  <span>{message.text}</span>
+                </div>
+              )}
             </form>
           </div>
         </div>

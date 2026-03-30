@@ -69,34 +69,35 @@ export default function OrderSummary({ showCouponSection = true }: OrderSummaryP
         ))}
       </div>
 
-      {/* Payment Method Toggle */}
-      <div className="mb-4 p-3 bg-gray-50 rounded-lg">
-        <p className="text-xs font-medium text-gray-600 mb-2">Payment Method</p>
-        <div className="flex gap-2">
-          <button
-            onClick={() => setIsPrepaid(true)}
-            className={`flex-1 py-2 px-3 text-xs font-medium rounded transition-colors ${
-              isPrepaid
-                ? "bg-[#b59a5c] text-white"
-                : "bg-white text-gray-600 border border-gray-200"
-            }`}
-          >
-            Prepaid
-            <span className="block text-[10px] opacity-80">+5% extra off</span>
-          </button>
-          <button
-            onClick={() => setIsPrepaid(false)}
-            className={`flex-1 py-2 px-3 text-xs font-medium rounded transition-colors ${
-              !isPrepaid
-                ? "bg-[#b59a5c] text-white"
-                : "bg-white text-gray-600 border border-gray-200"
-            }`}
-          >
-            Cash on Delivery
-            <span className="block text-[10px] opacity-80">+₹149 fee</span>
-          </button>
+      {showCouponSection && (
+        <div className="mb-4 p-3 bg-gray-50 rounded-lg">
+          <p className="text-xs font-medium text-gray-600 mb-2">Payment Method</p>
+          <div className="flex gap-2">
+            <button
+              onClick={() => setIsPrepaid(true)}
+              className={`flex-1 py-2 px-3 text-xs font-medium rounded transition-colors ${
+                isPrepaid
+                  ? "bg-[#b59a5c] text-white"
+                  : "bg-white text-gray-600 border border-gray-200"
+              }`}
+            >
+              Prepaid
+              <span className="block text-[10px] opacity-80">+5% extra off</span>
+            </button>
+            <button
+              onClick={() => setIsPrepaid(false)}
+              className={`flex-1 py-2 px-3 text-xs font-medium rounded transition-colors ${
+                !isPrepaid
+                  ? "bg-[#b59a5c] text-white"
+                  : "bg-white text-gray-600 border border-gray-200"
+              }`}
+            >
+              Cash on Delivery
+              <span className="block text-[10px] opacity-80">+₹149 fee</span>
+            </button>
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Calculations */}
       <div className="space-y-2 pt-4 border-t border-gray-100 text-sm">

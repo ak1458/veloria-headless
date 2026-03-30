@@ -45,10 +45,12 @@ export default function AboutPage() {
           <div className="grid md:grid-cols-2 gap-12 lg:gap-16 items-center">
             {/* Image */}
             <div className="relative aspect-[4/5] overflow-hidden rounded-lg">
-              <img
+              <Image
                 src="https://veloriavault.com/wp-content/uploads/2026/01/Bag-3-5-scaled.jpg"
                 alt="Veloria Vault Craftsmanship"
-                className="w-full h-full object-cover"
+                fill
+                sizes="(min-width: 1024px) 42vw, 100vw"
+                className="object-cover"
               />
             </div>
             
@@ -100,10 +102,12 @@ export default function AboutPage() {
             
             {/* Image - Right side on desktop */}
             <div className="relative aspect-[4/5] overflow-hidden rounded-lg order-1 md:order-2">
-              <img
+              <Image
                 src="https://veloriavault.com/wp-content/uploads/2026/01/Bag-16-4-scaled.jpg"
                 alt="Veloria Vault Genuine Leather"
-                className="w-full h-full object-cover"
+                fill
+                sizes="(min-width: 1024px) 42vw, 100vw"
+                className="object-cover"
               />
             </div>
           </div>

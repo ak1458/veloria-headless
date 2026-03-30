@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { useCartStore } from "@/store/cart";
 import { getRelativeProductLink, type WCProduct } from "@/lib/woocommerce";
 
@@ -31,6 +32,7 @@ export default function HomeProductCard({
       id: product.id,
       name: product.name,
       slug: product.slug,
+      href: productLink,
       price,
       image,
       category: categoryName,
@@ -50,11 +52,13 @@ export default function HomeProductCard({
         )}
 
         {/* Product Image - Large, fills container */}
-        <img
+        <Image
           src={image}
           alt={product.name}
-          className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
-          loading={imageLoading}
+          fill
+          sizes="(max-width: 768px) 50vw, 25vw"
+          className="object-cover transition-transform duration-500 group-hover:scale-105"
+          priority={imageLoading === "eager"}
         />
       </Link>
 

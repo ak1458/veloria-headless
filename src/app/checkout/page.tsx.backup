@@ -380,19 +380,6 @@ export default function CheckoutPage() {
                       {errors.city && <p className="text-xs text-red-500 mt-1">{errors.city.message}</p>}
                     </div>
                     <div>
-                      <label className="block text-xs font-bold text-gray-500 uppercase mb-1">State *</label>
-                      <input 
-                        {...register("state")}
-                        type="text" 
-                        placeholder="Delhi" 
-                        className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:border-[#b59a5c]"
-                      />
-                      {errors.state && <p className="text-xs text-red-500 mt-1">{errors.state.message}</p>}
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
                       <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Postal Code *</label>
                       <input 
                         {...register("postalCode")}
@@ -402,8 +389,10 @@ export default function CheckoutPage() {
                       />
                       {errors.postalCode && <p className="text-xs text-red-500 mt-1">{errors.postalCode.message}</p>}
                     </div>
-                    <div>
-                      <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Phone *</label>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Phone *</label>
                     <input 
                       {...register("phone")}
                       type="tel" 

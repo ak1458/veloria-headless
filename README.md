@@ -1,56 +1,73 @@
-# Veloria Headless
+# Veloria Vault Frontend
 
-A modern, premium **Headless WooCommerce** e-commerce website built with **Next.js**, **React**, and **Zustand**.
+Headless WooCommerce storefront built with Next.js App Router.
 
----
+## What this project does
 
-## 🚀 Overview
+- Renders the Veloria Vault storefront on top of WooCommerce REST APIs
+- Supports catalog, category, product detail, cart, wishlist, checkout, account, and static content pages
+- Handles product variations, variation image galleries, coupons, and Razorpay checkout
 
-This project is a decoupled frontend for a WooCommerce store, designed to provide a blazing-fast, app-like user experience with rich aesthetics, glassmorphism UI accents, and smooth GSAP/Framer Motion animations.
-
-### Key Features
-
-*   **⚡ Headless Architecture**: Next.js App Router communicating with WooCommerce REST API.
-*   **🛒 Advanced Cart Drawer**: Standardized state management with Zustand, enabling auto-open drawer reveals from any generic Add to Cart action.
-*   **🎨 Dynamic Swatches**: Single product views dynamically render variation updates preserving core style thumbnails stably.
-*   **❤️ Premium Wishlist**: Rebuilt Wishlist UX containing card rounded corner transforms, sale priority badges, and bulk bulk bulk additions.
-*   **📱 Fully Responsive**: Edge-to-edge adaptive layouts for mobile and desktop viewports.
-
----
-
-## 🛠️ Tech Stack
-
-*   **Frontend**: [Next.js](https://nextjs.org/) (App Router)
-*   **Styling**: Vanilla CSS + Tailwind CSS utilities
-*   **Animations**: Framer Motion
-*   **State Management**: [Zustand](https://github.com/pmndrs/zustand)
-*   **Backend**: WooCommerce REST API
-
----
-
-## 🏁 Getting Started
-
-### 1. Installation
+## Quick start
 
 ```bash
-cd veloria-headless
 npm install
-```
-
-### 2. Environment Variables
-
-Create a `.env.local` file in the root directory:
-
-```env
-NEXT_PUBLIC_WOOCOMMERCE_URL="https://your-wordpress-site.com"
-WOOCOMMERCE_CONSUMER_KEY="ck_..."
-WOOCOMMERCE_CONSUMER_SECRET="cs_..."
-```
-
-### 3. Run Development Server
-
-```bash
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+App runs at `http://localhost:3000`.
+
+## Required environment variables
+
+Create `.env.local` with the values below:
+
+```env
+WC_API_URL=
+WC_CONSUMER_KEY=
+WC_CONSUMER_SECRET=
+NEXT_PUBLIC_SITE_URL=
+NEXT_PUBLIC_LEGACY_SITE_URL=
+JWT_SECRET=
+NEXT_PUBLIC_RAZORPAY_KEY_ID=
+RAZORPAY_KEY_SECRET=
+RAZORPAY_KEY_ID=
+```
+
+## Project structure
+
+- `src/app`
+  Next.js routes, layouts, API handlers, and page-level data loading.
+- `src/components`
+  Reusable UI blocks like header, product cards, PDP, cart drawer, and checkout pieces.
+- `src/lib`
+  WooCommerce fetching, auth helpers, site utilities, and shared business logic.
+- `src/store`
+  Zustand stores for cart, wishlist, coupons, and UI state.
+- `src/config`
+  Small editable app configuration such as curated showcase lists.
+- `docs`
+  Working notes, audit reports, codebase guide, and archived reference files.
+- `scripts`
+  One-off helper scripts that are not part of the runtime app.
+
+## Useful commands
+
+```bash
+npm run dev
+npm run build
+npm run start
+npm run lint
+```
+
+## Docs for teammates
+
+- `docs/CODEBASE_GUIDE.md`
+  Simple map of the codebase for onboarding.
+- `docs/RELEASE_AUDIT_2026-03-30.md`
+  Latest audit and cleanup summary for GitHub update notes.
+
+## Notes
+
+- Product pages use WooCommerce parent + variation data, with legacy Woodmart variation galleries merged in when needed.
+- Cart and wishlist now store canonical product links so variation-based products do not break into 404 routes.
+- Pages that do not need per-request rendering use revalidation for better speed.

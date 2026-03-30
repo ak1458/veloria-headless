@@ -16,9 +16,42 @@ interface RazorpayPaymentProps {
   onError: (error: string) => void;
 }
 
+interface RazorpayResponse {
+  razorpay_order_id: string;
+  razorpay_payment_id: string;
+  razorpay_signature: string;
+}
+
+interface RazorpayOptions {
+  key: string | undefined;
+  amount: number;
+  currency: string;
+  name: string;
+  description: string;
+  order_id: string;
+  prefill: {
+    name: string;
+    email: string;
+    contact: string;
+  };
+  theme: {
+    color: string;
+  };
+  modal: {
+    ondismiss: () => void;
+  };
+  handler: (response: RazorpayResponse) => Promise<void>;
+}
+
+interface RazorpayConstructor {
+  new (options: RazorpayOptions): {
+    open: () => void;
+  };
+}
+
 declare global {
   interface Window {
-    Razorpay: any;
+    Razorpay?: RazorpayConstructor;
   }
 }
 
@@ -79,7 +112,7 @@ export default function RazorpayPayment({
         throw new Error(orderData.error || "Failed to create payment order");
       }
 
-      const options = {
+      const options: RazorpayOptions = {
         key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
         amount: orderData.amount,
         currency: orderData.currency,
@@ -99,7 +132,7 @@ export default function RazorpayPayment({
             setIsLoading(false);
           },
         },
-        handler: async function (response: any) {
+        handler: async (response: RazorpayResponse) => {
           try {
             // Verify payment
             const verifyResponse = await fetch("/api/razorpay/verify", {
@@ -119,11 +152,15 @@ export default function RazorpayPayment({
             } else {
               onError("Payment verification failed");
             }
-          } catch (error) {
+          } catch {
             onError("Error verifying payment");
           }
         },
       };
+
+      if (!window.Razorpay) {
+        throw new Error("Razorpay SDK unavailable");
+      }
 
       const razorpay = new window.Razorpay(options);
       razorpay.open();

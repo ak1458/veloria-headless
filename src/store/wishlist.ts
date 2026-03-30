@@ -5,6 +5,7 @@ export interface WishlistItem {
   id: number;
   name: string;
   slug: string;
+  href?: string;
   price: number;
   originalPrice?: number;
   image: string;
