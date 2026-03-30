@@ -18,11 +18,12 @@ const createOrderSchema = z.object({
   }),
 });
 
-const RAZORPAY_KEY_ID = process.env.RAZORPAY_KEY_ID;
-const RAZORPAY_KEY_SECRET = process.env.RAZORPAY_KEY_SECRET;
-
 export async function POST(request: NextRequest) {
   try {
+    // Read and trim env variables inside the handler
+    const RAZORPAY_KEY_ID = (process.env.RAZORPAY_KEY_ID || "").trim();
+    const RAZORPAY_KEY_SECRET = (process.env.RAZORPAY_KEY_SECRET || "").trim();
+
     // Rate limit check
     const clientIP = getClientIP(request);
     const rateLimitResult = rateLimit(
@@ -42,7 +43,7 @@ export async function POST(request: NextRequest) {
     if (!RAZORPAY_KEY_ID || !RAZORPAY_KEY_SECRET) {
       console.error("[Razorpay] Missing credentials");
       return NextResponse.json(
-        { error: "Payment service not configured" },
+        { error: "Payment service not configured correctly" },
         { status: 500 }
       );
     }
@@ -54,6 +55,10 @@ export async function POST(request: NextRequest) {
     // Create Razorpay order
     const auth = Buffer.from(`${RAZORPAY_KEY_ID}:${RAZORPAY_KEY_SECRET}`).toString("base64");
     
+    // Convert orderId string to number string and substring correctly for receipt
+    // Receipt length can't exceed 40 characters in Razorpay.
+    const safeReceipt = validated.orderNumber.substring(0, 40);
+
     const response = await fetch("https://api.razorpay.com/v1/orders", {
       method: "POST",
       headers: {
@@ -63,20 +68,24 @@ export async function POST(request: NextRequest) {
       body: JSON.stringify({
         amount: Math.round(validated.amount * 100), // Convert to paise
         currency: "INR",
-        receipt: validated.orderNumber,
+        receipt: safeReceipt,
         notes: {
-          order_id: validated.orderId,
-          customer_email: validated.customerDetails.email,
-          customer_name: validated.customerDetails.name,
+          order_id: validated.orderId.substring(0, 250),
+          customer_email: validated.customerDetails.email.substring(0, 250),
+          customer_name: validated.customerDetails.name.substring(0, 250),
         },
       }),
     });
 
     if (!response.ok) {
-      const error = await response.json();
-      console.error("[Razorpay] Order creation failed:", error);
+      const errorData = await response.json();
+      console.error("[Razorpay] Order creation failed details:", errorData);
+      
+      const razorpayErrorMsg = errorData?.error?.description || "Failed to create payment order";
+      const razorpayErrorReason = errorData?.error?.reason || "Unknown";
+      
       return NextResponse.json(
-        { error: "Failed to create payment order" },
+        { error: `${razorpayErrorMsg} (${razorpayErrorReason})`, details: errorData },
         { status: 500 }
       );
     }
@@ -93,14 +102,14 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     if (error instanceof z.ZodError) {
       return NextResponse.json(
-        { error: "Invalid request data" },
+        { error: "Invalid request data for payment" },
         { status: 400 }
       );
     }
 
-    console.error("[Razorpay] Error:", error);
+    console.error("[Razorpay] Error processing order:", error);
     return NextResponse.json(
-      { error: "Payment initialization failed" },
+      { error: "Payment initialization failed. Server error." },
       { status: 500 }
     );
   }
