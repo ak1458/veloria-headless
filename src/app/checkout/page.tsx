@@ -214,10 +214,10 @@ export default function CheckoutPage() {
             className="bg-white p-8 rounded-2xl border border-gray-100 shadow-sm"
           >
             <div className="text-center mb-8">
-              <div className="w-16 h-16 bg-[#072654]/10 rounded-full flex items-center justify-center mx-auto mb-4">
-                <Shield className="w-8 h-8 text-[#072654]" />
+              <div className="w-16 h-16 bg-green-50 rounded-full flex items-center justify-center mx-auto mb-4">
+                <Check className="w-8 h-8 text-green-500" />
               </div>
-              <h2 className="font-serif text-2xl text-gray-900 mb-2">Complete Your Payment</h2>
+              <h2 className="font-serif text-2xl text-gray-900 mb-2">Order Created Successfully!</h2>
               <p className="text-sm text-gray-500">Order #{pendingOrder.orderNumber}</p>
             </div>
 
@@ -226,11 +226,9 @@ export default function CheckoutPage() {
                 <span className="text-gray-600">Amount to Pay</span>
                 <span className="text-2xl font-bold text-gray-900">₹{Number(pendingOrder.total).toLocaleString("en-IN")}</span>
               </div>
-              <p className="text-xs text-gray-400 text-center mt-4 flex items-center justify-center gap-1">
-                <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
-                  <path fillRule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clipRule="evenodd" />
-                </svg>
-                Secure payment powered by Razorpay
+              <div className="border-t border-gray-200 my-3"></div>
+              <p className="text-sm text-gray-500 text-center">
+                Your order has been created. Click below to complete the payment via Razorpay.
               </p>
             </div>
 
@@ -280,10 +278,25 @@ export default function CheckoutPage() {
           </div>
           <h2 className="font-serif text-2xl text-gray-900 mb-2">Order Confirmed!</h2>
           <p className="text-sm text-gray-500 mb-2">Thank you for your purchase.</p>
-          <p className="text-lg font-semibold text-[#b59a5c] mb-6">Order #{placedOrder.orderNumber}</p>
-          <Link href="/shop" className="bg-[#1a1a1a] text-white px-6 py-3 rounded text-xs font-bold uppercase tracking-widest hover:bg-[#b59a5c] transition-colors block text-center">
-            Continue Shopping
-          </Link>
+          <p className="text-lg font-semibold text-[#b59a5c] mb-2">Order #{placedOrder.orderNumber}</p>
+          <p className="text-xs text-gray-400 mb-6">
+            A confirmation email has been sent to you
+          </p>
+          
+          <div className="space-y-3">
+            <Link 
+              href={`/track-order`} 
+              className="bg-[#b59a5c] text-white px-6 py-3 rounded text-xs font-bold uppercase tracking-widest hover:bg-[#a08a4f] transition-colors block text-center"
+            >
+              Track Your Order
+            </Link>
+            <Link 
+              href="/shop" 
+              className="bg-[#1a1a1a] text-white px-6 py-3 rounded text-xs font-bold uppercase tracking-widest hover:bg-gray-800 transition-colors block text-center"
+            >
+              Continue Shopping
+            </Link>
+          </div>
         </motion.div>
       </div>
     );

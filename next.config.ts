@@ -25,6 +25,32 @@ const nextConfig: NextConfig = {
     ],
   },
   
+  // Add CSP headers for Razorpay and other external resources
+  async headers() {
+    return [
+      {
+        source: "/(.*)",
+        headers: [
+          {
+            key: "Content-Security-Policy",
+            value: [
+              "default-src 'self'",
+              "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://checkout.razorpay.com https://*.razorpay.com",
+              "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+              "img-src 'self' blob: data: https://*.veloriavault.com https://veloriavault.com https://*.wp.com https://*.razorpay.com",
+              "font-src 'self' https://fonts.gstatic.com",
+              "connect-src 'self' https://*.veloriavault.com https://veloriavault.com https://*.razorpay.com https://api.razorpay.com",
+              "frame-src 'self' https://checkout.razorpay.com https://api.razorpay.com",
+              "frame-ancestors 'none'",
+              "base-uri 'self'",
+              "form-action 'self' https://*.razorpay.com",
+            ].join("; "),
+          },
+        ],
+      },
+    ];
+  },
+  
   // Environment variables that should be available at build time
   env: {
     NEXT_PUBLIC_SITE_URL: process.env.NEXT_PUBLIC_SITE_URL,

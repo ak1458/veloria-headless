@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useRef } from "react";
+import { useMemo, useRef, useState, useCallback, Suspense } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import PremiumProductCard from "@/components/PremiumProductCard";
@@ -23,7 +23,7 @@ interface ShopContentProps {
   initialSearchTerm?: string;
 }
 
-export default function ShopContent({
+function ShopContentInner({
   initialCategories,
   initialProducts,
   initialCategorySlug,
@@ -33,9 +33,18 @@ export default function ShopContent({
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const searchInputRef = useRef<HTMLInputElement>(null);
+  const [isUpdating, setIsUpdating] = useState(false);
 
-  const categorySlug = searchParams.get("category") || initialCategorySlug;
-  const searchTerm = searchParams.get("search") || initialSearchTerm;
+  // Safely get URL params with fallbacks to initial props
+  let categorySlug = initialCategorySlug;
+  let searchTerm = initialSearchTerm;
+  
+  try {
+    categorySlug = searchParams.get("category") || initialCategorySlug;
+    searchTerm = searchParams.get("search") || initialSearchTerm;
+  } catch (e) {
+    console.error("Error reading search params:", e);
+  }
 
   const categories = useMemo(() => {
     return initialCategories
@@ -67,34 +76,41 @@ export default function ShopContent({
     return filtered;
   }, [initialProducts, categorySlug, searchTerm]);
 
-  const updateQuery = (updates: { category?: string; search?: string }) => {
-    const nextParams = new URLSearchParams(searchParams.toString());
+  const updateQuery = useCallback((updates: { category?: string; search?: string }) => {
+    try {
+      setIsUpdating(true);
+      const nextParams = new URLSearchParams(searchParams?.toString() || "");
 
-    if (updates.category) {
-      nextParams.set("category", updates.category);
-    } else {
-      nextParams.delete("category");
+      if (updates.category) {
+        nextParams.set("category", updates.category);
+      } else {
+        nextParams.delete("category");
+      }
+
+      if (updates.search) {
+        nextParams.set("search", updates.search);
+      } else {
+        nextParams.delete("search");
+      }
+
+      const queryString = nextParams.toString();
+      router.push(queryString ? `${pathname}?${queryString}` : pathname, { scroll: false });
+    } catch (e) {
+      console.error("Error updating query:", e);
+    } finally {
+      setIsUpdating(false);
     }
+  }, [pathname, router, searchParams]);
 
-    if (updates.search) {
-      nextParams.set("search", updates.search);
-    } else {
-      nextParams.delete("search");
-    }
-
-    const queryString = nextParams.toString();
-    router.push(queryString ? `${pathname}?${queryString}` : pathname, { scroll: false });
-  };
-
-  const handleSearch = (e: React.FormEvent) => {
+  const handleSearch = useCallback((e: React.FormEvent) => {
     e.preventDefault();
     const localSearch = searchInputRef.current?.value.trim() || "";
     updateQuery({ search: localSearch || undefined });
-  };
+  }, [updateQuery]);
 
-  const handleCategoryClick = (slug: string | null) => {
+  const handleCategoryClick = useCallback((slug: string | null) => {
     updateQuery({ category: slug || undefined });
-  };
+  }, [updateQuery]);
 
   const getCategoryLabel = (slug: string) => {
     const tab = CATEGORY_TABS.find((t) => t.slug === slug);
@@ -212,5 +228,34 @@ export default function ShopContent({
         )}
       </div>
     </div>
+  );
+}
+
+// Loading fallback
+function ShopLoading() {
+  return (
+    <div className="min-h-screen bg-white pb-20 lg:pb-0">
+      <div className="relative bg-[#1a1a1a] h-[300px] md:h-[400px] overflow-hidden">
+        <div className="absolute inset-0 flex items-center justify-center z-10">
+          <h1 className="text-4xl md:text-5xl lg:text-6xl font-serif font-medium text-white text-center">
+            SHOP
+          </h1>
+        </div>
+      </div>
+      <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-12">
+        <div className="flex justify-center items-center h-64">
+          <div className="animate-pulse text-gray-400">Loading products...</div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Main export with Suspense wrapper
+export default function ShopContent(props: ShopContentProps) {
+  return (
+    <Suspense fallback={<ShopLoading />}>
+      <ShopContentInner {...props} />
+    </Suspense>
   );
 }

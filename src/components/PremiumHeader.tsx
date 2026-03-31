@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useState, useEffect, useCallback } from "react";
 import { useCartStore } from "@/store/cart";
 import { useWishlistStore } from "@/store/wishlist";
-import { Menu, X, ShoppingBag, Heart, User, ChevronDown } from "lucide-react";
+import { Menu, X, ShoppingBag, Heart, User, ChevronDown, Package } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import CartDrawer from "./CartDrawer";
 
@@ -144,6 +144,9 @@ export default function PremiumHeader() {
                 />
               </Link>
               <div className="flex-1 flex items-center justify-end space-x-4">
+                <Link href="/track-order" className="text-xs tracking-wider text-gray-600 hover:text-[#b59a5c] cursor-pointer transition-colors font-bold">
+                  TRACK ORDER
+                </Link>
                 <Link href="/account" className="text-xs tracking-wider text-gray-600 hover:text-black cursor-pointer transition-colors font-bold">
                   LOGIN / REGISTER
                 </Link>
@@ -383,9 +386,19 @@ export default function PremiumHeader() {
                   <ul className="space-y-1">
                     <li>
                       <Link
-                        href="/account"
+                        href="/track-order"
                         onClick={closeMobileMenu}
                         className="flex items-center space-x-3 py-2 text-gray-600 hover:text-black font-bold"
+                      >
+                        <Package size={18} />
+                        <span>Track Your Order</span>
+                      </Link>
+                    </li>
+                    <li>
+                      <Link
+                        href="/account"
+                        onClick={closeMobileMenu}
+                        className="flex items-center space-x-3 py-2 text-gray-600 hover:text-black"
                       >
                         <User size={18} />
                         <span>Login / Register</span>

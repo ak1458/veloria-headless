@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef } from "react";
 import { Loader2 } from "lucide-react";
 
 interface RazorpayPaymentProps {
@@ -64,6 +64,7 @@ export default function RazorpayPayment({
   onError,
 }: RazorpayPaymentProps) {
   const [isLoading, setIsLoading] = useState(false);
+  const hasOpened = useRef(false);
 
   const loadRazorpayScript = useCallback(() => {
     return new Promise<void>((resolve, reject) => {
@@ -87,6 +88,11 @@ export default function RazorpayPayment({
   }, []);
 
   const handlePayment = async () => {
+    // Prevent double-click or auto-trigger
+    if (hasOpened.current || isLoading) {
+      return;
+    }
+    hasOpened.current = true;
     setIsLoading(true);
     try {
       // Load Razorpay SDK
@@ -128,6 +134,7 @@ export default function RazorpayPayment({
         modal: {
           ondismiss: () => {
             setIsLoading(false);
+            hasOpened.current = false; // Allow retry if dismissed
           },
         },
         handler: async (response: RazorpayResponse) => {
@@ -165,6 +172,7 @@ export default function RazorpayPayment({
       setIsLoading(false);
     } catch (error) {
       setIsLoading(false);
+      hasOpened.current = false; // Allow retry on error
       onError(error instanceof Error ? error.message : "Payment failed");
     }
   };

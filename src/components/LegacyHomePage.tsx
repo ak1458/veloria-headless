@@ -19,6 +19,7 @@ import {
   getVariationProducts,
   getProductReviews,
   type WCProduct,
+  type WCReview,
 } from "@/lib/woocommerce";
 
 // Custom Premium SVG Icons
@@ -103,13 +104,25 @@ function findProduct(products: WCProduct[], terms: string[]): WCProduct | undefi
 }
 
 export default async function LegacyHomePage() {
-  const [productsResult, reviewsResult] = await Promise.allSettled([
-    getVariationProducts(),
-    getProductReviews({ per_page: 5 }),
-  ]);
+  let products: WCProduct[] = [];
+  let reviews: WCReview[] = [];
+  
+  try {
+    const [productsResult, reviewsResult] = await Promise.allSettled([
+      getVariationProducts(),
+      getProductReviews({ per_page: 5 }),
+    ]);
 
-  const products = productsResult.status === "fulfilled" ? productsResult.value : [];
-  const reviews = reviewsResult.status === "fulfilled" ? reviewsResult.value : [];
+    products = productsResult.status === "fulfilled" ? productsResult.value : [];
+    reviews = reviewsResult.status === "fulfilled" ? reviewsResult.value : [];
+    
+    // Log for debugging
+    if (process.env.NODE_ENV !== "production") {
+      console.log(`[HomePage] Loaded ${products.length} products, ${reviews.length} reviews`);
+    }
+  } catch (error) {
+    console.error("[HomePage] Error loading data:", error);
+  }
 
   const tabs = CATEGORY_TABS.map((tab) => ({
     ...tab,
@@ -215,28 +228,42 @@ export default async function LegacyHomePage() {
             </h2>
           </div>
 
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-            {finalShowcaseProducts.map((product) => (
-              <HomeProductCard key={product.id} product={product} />
-            ))}
-          </div>
+          {finalShowcaseProducts.length > 0 ? (
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+              {finalShowcaseProducts.map((product) => (
+                <HomeProductCard key={product.id} product={product} />
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-12">
+              <p className="text-gray-500 mb-4">Our bestsellers are being restocked. Check back soon!</p>
+              <Link 
+                href="/shop" 
+                className="inline-flex items-center px-6 py-3 bg-black text-white text-xs font-bold tracking-[0.2em] uppercase hover:bg-[#b59a5c] transition-colors duration-300"
+              >
+                View All Products
+              </Link>
+            </div>
+          )}
         </div>
       </section>
 
-      {/* Most Loved Styles Section */}
-      <section className="py-16 lg:py-24">
-        <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-12">
-            <p className="text-[11px] font-semibold tracking-[0.2em] text-[#b59a5c] uppercase mb-3">
-              Most Loved Styles
-            </p>
-            <h2 className="text-2xl lg:text-3xl font-serif font-medium text-gray-900">
-              Choose the silhouette that fits her rhythm.
-            </h2>
+      {/* Most Loved Styles Section - Only show if we have tabs with products */}
+      {tabs.length > 0 && (
+        <section className="py-16 lg:py-24">
+          <div className="container mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="text-center mb-12">
+              <p className="text-[11px] font-semibold tracking-[0.2em] text-[#b59a5c] uppercase mb-3">
+                Most Loved Styles
+              </p>
+              <h2 className="text-2xl lg:text-3xl font-serif font-medium text-gray-900">
+                Choose the silhouette that fits her rhythm.
+              </h2>
+            </div>
+            <LegacyHomeTabs tabs={tabs} />
           </div>
-          <LegacyHomeTabs tabs={tabs} />
-        </div>
-      </section>
+        </section>
+      )}
 
       <InstagramFeed />
 

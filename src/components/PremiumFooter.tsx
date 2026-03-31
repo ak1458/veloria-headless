@@ -14,10 +14,11 @@ const COLLECTIONS = [
 ];
 
 const IMPORTANT_LINKS = [
-  { label: "Refund & Cancellation", href: "/cancellation-refund-policy" },
+  { label: "Track Your Order", href: "/track-order" },
+  { label: "Refund & Cancellation", href: "/cancellation-refund" },
   { label: "Privacy Policy", href: "/privacy-policy" },
   { label: "Shipping Policy", href: "/shipping-policy" },
-  { label: "Return Policy", href: "/refund_returns" },
+  { label: "Return Policy", href: "/refund-returns" },
   { label: "Warranty Policy", href: "/warranty-policy" },
   { label: "Terms & Conditions", href: "/terms-conditions" },
 ];

@@ -45,10 +45,10 @@ export default function Footer() {
               </div>
               <div className="elementor-element elementor-element-22907f5 color-scheme-inherit text-left elementor-widget elementor-widget-text-editor" data-id="22907f5">
                 <ul>
-                  <li><Link href="/cancellation-refund-policy">Refund &amp; Cancellation</Link></li>
+                  <li><Link href="/cancellation-refund">Refund &amp; Cancellation</Link></li>
                   <li><Link href="/privacy-policy">Privacy Policy</Link></li>
                   <li><Link href="/shipping-policy">Shipping Policy</Link></li>
-                  <li><Link href="/refund_returns">Return Policy</Link></li>
+                  <li><Link href="/refund-returns">Return Policy</Link></li>
                   <li><Link href="/warranty-policy">Warranty Policy</Link></li>
                   <li><Link href="/terms-conditions">Terms &amp; Conditions</Link></li>
                 </ul>
