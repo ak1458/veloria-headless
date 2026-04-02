@@ -34,10 +34,8 @@ export function SpinWheel() {
         setHasSpun(data.hasSpun);
         if (data.hasSpun && data.discount) {
           setWonDiscount(data.discount);
-        } else if (!data.hasSpun) {
-          // Show widget after brief delay if they haven't spun
-          setTimeout(() => setIsOpen(true), 3000);
         }
+        // No auto-open — user must tap the floating button
       })
       .catch(console.error);
   }, []);
@@ -94,7 +92,7 @@ export function SpinWheel() {
 
   return (
     <>
-      {/* Floating Action Button to open Wheel if they closed it before spinning */}
+      {/* Floating Action Button — only opens on explicit tap */}
       {!isOpen && !hasSpun && (
         <button
           onClick={() => setIsOpen(true)}

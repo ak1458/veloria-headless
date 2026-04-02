@@ -26,12 +26,12 @@ const securityHeaders = {
   // Content Security Policy
   "Content-Security-Policy": [
     "default-src 'self'",
-    "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://checkout.razorpay.com",
+    "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://checkout.razorpay.com https://cdn.razorpay.com",
     "style-src 'self' 'unsafe-inline'",
     "img-src 'self' https: data: blob:",
-    "font-src 'self'",
-    "connect-src 'self' https://veloriavault.com https://api.razorpay.com",
-    "frame-src https://checkout.razorpay.com",
+    "font-src 'self' https://fonts.gstatic.com",
+    "connect-src 'self' https://veloriavault.com https://api.razorpay.com https://lumberjack.razorpay.com https://cdn.razorpay.com",
+    "frame-src https://checkout.razorpay.com https://api.razorpay.com",
     "base-uri 'self'",
     "form-action 'self'",
   ].join("; "),

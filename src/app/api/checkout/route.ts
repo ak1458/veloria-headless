@@ -18,6 +18,7 @@ import { calculateDiscounts } from "@/lib/coupon-calculator";
 import { getProductsByIds, getProductById } from "@/lib/woocommerce";
 import { verifyToken } from "@/lib/auth/jwt";
 import { rateLimit, getClientIP, RATE_LIMITS } from "@/lib/rate-limit";
+import { createShiprocketOrder } from "@/lib/shiprocket";
 import jwt from "jsonwebtoken";
 
 // Basic HTML sanitizer for security
@@ -369,6 +370,39 @@ export async function POST(request: NextRequest) {
         { error: "Payment link could not be generated" },
         { status: 500 },
       );
+    }
+
+    // ========================================
+    // SHIPROCKET SYNC (COD orders sync immediately)
+    // Prepaid orders sync after payment in update-payment route
+    // ========================================
+    if (validatedData.paymentMethod === "cod") {
+      // Fire-and-forget — don't block checkout response
+      createShiprocketOrder({
+        orderId: order.id,
+        orderDate: new Date().toISOString().split("T")[0] + " " + new Date().toTimeString().split(" ")[0],
+        customer: {
+          firstName: validatedData.firstName,
+          lastName: validatedData.lastName,
+          email: validatedData.email,
+          phone: validatedData.phone,
+          address: validatedData.address,
+          city: validatedData.city,
+          state: validatedData.state,
+          postalCode: validatedData.postalCode,
+        },
+        items: validatedData.items.map((item) => ({
+          id: item.id,
+          name: item.name,
+          quantity: item.quantity,
+          price: item.price,
+        })),
+        paymentMethod: "cod",
+        subtotal: calculation.originalSubtotal,
+        shippingCharges: calculation.shippingCost,
+        discount: calculation.prepaidDiscount + calculation.manualCouponDiscount,
+        total: calculation.finalTotal,
+      }).catch((err) => console.error("[Checkout] Shiprocket sync failed (non-blocking):", err));
     }
 
     return NextResponse.json({
