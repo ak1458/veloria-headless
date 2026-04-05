@@ -7,12 +7,13 @@ export interface InstagramPost {
 
 export async function getInstagramFeed(): Promise<InstagramPost[]> {
   try {
-    const response = await fetch("https://veloriavault.com/", {
+    // Fetch from the WordPress subdomain since veloriavault.com now points to Vercel
+    const response = await fetch("https://wp.veloriavault.com/", {
       next: { revalidate: 900 },
     });
     
     if (!response.ok) {
-      throw new Error("Failed to fetch WordPress homepage");
+      throw new Error(`Failed to fetch WordPress homepage: ${response.status}`);
     }
 
     const html = await response.text();
@@ -63,10 +64,10 @@ export async function getInstagramFeed(): Promise<InstagramPost[]> {
       limit -= 1;
     }
     
-    // Return exactly the even number limit
     return posts.slice(0, limit);
   } catch (error) {
     console.error("Error scraping Instagram feed:", error);
+    // CRITICAL: Return an empty array instead of failing the build
     return [];
   }
 }

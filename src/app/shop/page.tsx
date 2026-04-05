@@ -2,6 +2,7 @@ import ShopContent from "./ShopContent";
 import { getCategories, getVariationProducts } from "@/lib/woocommerce";
 import type { Metadata } from "next";
 
+export const dynamic = "force-dynamic";
 export const revalidate = 300;
 
 export const metadata: Metadata = {

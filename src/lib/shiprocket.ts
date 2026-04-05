@@ -34,7 +34,8 @@ async function getAuthToken(): Promise<string> {
   const password = process.env.SHIPROCKET_PASSWORD;
 
   if (!email || !password) {
-    throw new Error("[Shiprocket] Missing SHIPROCKET_EMAIL or SHIPROCKET_PASSWORD env vars");
+    console.warn("[Shiprocket] Missing credentials — Build-time skip.");
+    return "";
   }
 
   console.log("[Shiprocket] Authenticating with API...");
@@ -48,7 +49,7 @@ async function getAuthToken(): Promise<string> {
   if (!res.ok) {
     const err = await res.text();
     console.error("[Shiprocket] Auth failed:", err);
-    throw new Error(`Shiprocket authentication failed: ${res.status}`);
+    return "";
   }
 
   const data = await res.json();

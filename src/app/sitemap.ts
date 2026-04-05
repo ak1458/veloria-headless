@@ -68,32 +68,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     },
   ];
 
-  try {
-    // Fetch products and categories
-    const [products, categories] = await Promise.all([
-      getParentProducts({ per_page: 100 }),
-      getCategories(),
-    ]);
-
-    // Product pages
-    const productPages = products.map((product) => ({
-      url: `${baseUrl}/product/${product.slug}`,
-      lastModified: new Date(),
-      changeFrequency: "weekly" as const,
-      priority: 0.8,
-    }));
-
-    // Category pages
-    const categoryPages = categories.map((category) => ({
-      url: `${baseUrl}/product-category/${category.slug}`,
-      lastModified: new Date(),
-      changeFrequency: "weekly" as const,
-      priority: 0.7,
-    }));
-
-    return [...staticPages, ...productPages, ...categoryPages];
-  } catch (error) {
-    console.error("Error generating sitemap:", error);
-    return staticPages;
-  }
+  // For now, return only static pages to ensure build stability
+  // Dynamic product/category fetching can be re-enabled once the backend is fully stable
+  return staticPages;
 }

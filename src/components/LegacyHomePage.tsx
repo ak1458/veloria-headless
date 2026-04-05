@@ -13,10 +13,11 @@ import HomeProductCard from "@/components/HomeProductCard";
 import InstagramFeed from "@/components/InstagramFeed";
 import CustomerReviewsSection from "@/components/CustomerReviewsSection";
 import { CATEGORY_TABS } from "@/lib/catalog";
-import { HOT_SELLER_SEARCH_TERMS, HOT_SELLER_HEADING } from "@/config/hot-sellers";
+import { HOT_SELLER_IDS, HOT_SELLER_HEADING } from "@/config/hot-sellers";
 import {
   getRelativeProductLink,
   getVariationProducts,
+  getProductsByIds,
   getProductReviews,
   type WCProduct,
   type WCReview,
@@ -106,19 +107,22 @@ function findProduct(products: WCProduct[], terms: string[]): WCProduct | undefi
 export default async function LegacyHomePage() {
   let products: WCProduct[] = [];
   let reviews: WCReview[] = [];
+  let showcaseProducts: WCProduct[] = [];
   
   try {
-    const [productsResult, reviewsResult] = await Promise.allSettled([
+    const [productsResult, reviewsResult, showcaseResult] = await Promise.allSettled([
       getVariationProducts(),
       getProductReviews({ per_page: 5 }),
+      getProductsByIds(HOT_SELLER_IDS),
     ]);
 
     products = productsResult.status === "fulfilled" ? productsResult.value : [];
     reviews = reviewsResult.status === "fulfilled" ? reviewsResult.value : [];
+    showcaseProducts = showcaseResult.status === "fulfilled" ? showcaseResult.value : [];
     
     // Log for debugging
     if (process.env.NODE_ENV !== "production") {
-      console.log(`[HomePage] Loaded ${products.length} products, ${reviews.length} reviews`);
+      console.log(`[HomePage] Loaded ${products.length} products, ${reviews.length} reviews, ${showcaseProducts.length} hot sellers`);
     }
   } catch (error) {
     console.error("[HomePage] Error loading data:", error);
@@ -135,14 +139,19 @@ export default async function LegacyHomePage() {
     findProduct(products, ["donna", "chocolate brown"]) ||
     findProduct(products, ["donna"]);
 
-  // Hot Seller - configured in src/config/hot-sellers.ts (edit that file to change bags)
-  const showcaseProducts = HOT_SELLER_SEARCH_TERMS
-    .map((terms) => findProduct(products, terms))
-    .filter((product): product is WCProduct => Boolean(product));
-
-  const finalShowcaseProducts = showcaseProducts.length > 0 
-    ? showcaseProducts 
-    : products.slice(0, 4);
+  // Ensure we get the SPECIFIC bags requested as Hot Sellers
+  // Try showcaseProducts (ID-based) first, then fallback to searching by name in the main list
+  let finalShowcaseProducts = showcaseProducts;
+  if (!finalShowcaseProducts.length) {
+    const backupList = [
+      findProduct(products, ["freya"]),
+      findProduct(products, ["amara"]),
+      findProduct(products, ["vanya"]),
+      findProduct(products, ["vivian"]),
+    ].filter((p): p is WCProduct => Boolean(p));
+    
+    finalShowcaseProducts = backupList.length > 0 ? backupList : products.slice(0, 4);
+  }
 
   return (
     <main id="main-content" className="legacy-home-page" role="main">

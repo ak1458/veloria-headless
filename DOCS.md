@@ -276,22 +276,23 @@ const SEGMENTS = [
 📍 **File:** `src/config/hot-sellers.ts`
 
 ```typescript
-export const HOT_SELLER_SEARCH_TERMS: string[][] = [
-  ["freya", "camel"],       // Product name keyword + color keyword
-  ["amara", "green"],
-  ["vanya", "black"],
-  ["vivian", "camel"],
+export const HOT_SELLER_IDS: number[] = [
+  3459,  // The Freya (Camel)
+  3137,  // The Amara (Emerald)
+  3692,  // The Vanya Sling (Black)
+  3734,  // The Vivian (Camel)
 ];
 ```
 
 **To change a hot seller:**
-1. Go to your WooCommerce dashboard → Products.
-2. Note the product name and color (e.g., "The Elira" in "Cherry").
-3. Replace one line: `["elira", "cherry"],`
-4. Save, commit, push. Done!
+1. Go to your WordPress dashboard → Products.
+2. Click on the product you want to feature.
+3. Look for the **ID** in the URL or next to the title (e.g., `post=1234`).
+4. Replace one of the numbers in `HOT_SELLER_IDS` with the new ID.
+5. Save, commit, and push. Changes will appear on the site within 60 seconds.
 
 > [!TIP]
-> Keep exactly **4 entries** so the grid looks correct (2×2 on mobile, 4 on desktop).
+> Keep exactly **4 IDs** in the list so the grid layout (2×2 on mobile, 4 on desktop) stays premium and structured.
 
 **To change the section heading:**
 ```typescript

@@ -2,8 +2,7 @@ const wcApiUrl = process.env.WC_API_URL;
 const LOCAL_WP_CONTENT = "/wp-content";
 
 export const LEGACY_SITE_URL =
-  process.env.NEXT_PUBLIC_LEGACY_SITE_URL ||
-  (wcApiUrl ? new URL(wcApiUrl).origin : "https://veloriavault.com");
+  process.env.NEXT_PUBLIC_LEGACY_SITE_URL || "http://145.79.212.69";
 
 export const LEGACY_GLOBAL_STYLES = [
   "https://fonts.googleapis.com/css?family=Playfair+Display%3A400%2C600%2C500%7CInter%3A400%2C600%7CLato%3A400%2C700&display=swap",

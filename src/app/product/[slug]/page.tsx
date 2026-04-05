@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import ProductDetails from "@/components/ProductDetails";
 import { getProductBySlug, getProductVariations } from "@/lib/woocommerce";
 
-export const revalidate = 300;
+export const dynamic = 'force-dynamic';
 
 interface ProductPageProps {
   params: Promise<{

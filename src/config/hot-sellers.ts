@@ -24,11 +24,11 @@
  * ============================================================
  */
 
-export const HOT_SELLER_SEARCH_TERMS: string[][] = [
-  ["freya", "camel"],          // 🛍️ freya
-  ["amara", "green"],          // 🛍️ The Amara
-  ["vanya", "black"],          // 🛍️ The Vanya Sling
-  ["vivian", "camel"],          // 🛍️ Vivian
+export const HOT_SELLER_IDS: number[] = [
+  3459, // 🛍️ Freya
+  3137, // 🛍️ The Amara
+  3692, // 🛍️ The Vanya Sling
+  3734, // 🛍️ Vivian
 ];
 
 /**

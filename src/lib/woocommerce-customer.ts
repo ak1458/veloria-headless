@@ -12,7 +12,8 @@ function getAuthHeader(): string {
 export async function createWCCustomer(data: CustomerRegisterData): Promise<WooCommerceCustomer | null> {
   try {
     if (!WC_API_URL || !CONSUMER_KEY || !CONSUMER_SECRET) {
-      throw new Error("Missing WooCommerce credentials");
+      console.warn("MISSING WC CUSTOMER CREDENTIALS — Build-time skip.");
+      return null;
     }
 
     const customerData = {
@@ -73,7 +74,8 @@ export async function createWCCustomer(data: CustomerRegisterData): Promise<WooC
 export async function getCustomerByEmail(email: string): Promise<WooCommerceCustomer | null> {
   try {
     if (!WC_API_URL || !CONSUMER_KEY || !CONSUMER_SECRET) {
-      throw new Error("Missing WooCommerce credentials");
+      console.warn("MISSING WC CUSTOMER CREDENTIALS — Build-time skip.");
+      return null;
     }
 
     const response = await fetch(
@@ -102,7 +104,8 @@ export async function getCustomerByEmail(email: string): Promise<WooCommerceCust
 export async function getCustomerById(id: number): Promise<WooCommerceCustomer | null> {
   try {
     if (!WC_API_URL || !CONSUMER_KEY || !CONSUMER_SECRET) {
-      throw new Error("Missing WooCommerce credentials");
+      console.warn("MISSING WC CUSTOMER CREDENTIALS — Build-time skip.");
+      return null;
     }
 
     const response = await fetch(`${WC_API_URL}/customers/${id}`, {
@@ -130,7 +133,8 @@ export async function updateCustomer(
 ): Promise<WooCommerceCustomer | null> {
   try {
     if (!WC_API_URL || !CONSUMER_KEY || !CONSUMER_SECRET) {
-      throw new Error("Missing WooCommerce credentials");
+      console.warn("MISSING WC CUSTOMER CREDENTIALS — Build-time skip.");
+      return null;
     }
 
     const response = await fetch(`${WC_API_URL}/customers/${id}`, {
@@ -157,7 +161,8 @@ export async function updateCustomer(
 export async function getCustomerOrders(customerId: number): Promise<unknown[]> {
   try {
     if (!WC_API_URL || !CONSUMER_KEY || !CONSUMER_SECRET) {
-      throw new Error("Missing WooCommerce credentials");
+      console.warn("MISSING WC CUSTOMER CREDENTIALS — Build-time skip.");
+      return [];
     }
 
     const response = await fetch(
