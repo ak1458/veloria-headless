@@ -15,15 +15,17 @@ const calculateSchema = z.object({
   isPrepaid: z.boolean().default(true),
 });
 
-const JWT_SECRET = process.env.JWT_SECRET as string;
-
-if (!JWT_SECRET) {
-  throw new Error("FATAL: JWT_SECRET environment variable is not set.");
-}
+// JWT_SECRET is validated at request time, not module load time,
+// so the build succeeds even without env vars.
 
 // POST /api/coupons/calculate - Calculate discounts for cart
 export async function POST(request: NextRequest) {
   try {
+    const JWT_SECRET = process.env.JWT_SECRET;
+    if (!JWT_SECRET) {
+      return NextResponse.json({ success: false, error: "Server configuration error" }, { status: 500 });
+    }
+
     const body = await request.json();
     const validatedData = calculateSchema.parse(body);
     const productIds = validatedData.items.map((item) => item.id);

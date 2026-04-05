@@ -10,15 +10,16 @@ const validateSchema = z.object({
   existingCoupons: z.array(z.string()).default([]),
 });
 
-const JWT_SECRET = process.env.JWT_SECRET as string;
-
-if (!JWT_SECRET) {
-  throw new Error("FATAL: JWT_SECRET environment variable is not set.");
-}
+// JWT_SECRET is validated at request time, not module load time,
+// so the build succeeds even without env vars.
 
 // GET /api/coupons/validate - Validate a single coupon
 export async function GET(request: NextRequest) {
   try {
+    const JWT_SECRET = process.env.JWT_SECRET;
+    if (!JWT_SECRET) {
+      return NextResponse.json({ success: false, error: "Server configuration error" }, { status: 500 });
+    }
     const searchParams = request.nextUrl.searchParams;
     const body = {
       code: searchParams.get("code"),

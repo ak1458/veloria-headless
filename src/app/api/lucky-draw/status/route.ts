@@ -1,13 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import jwt from "jsonwebtoken";
 
-const JWT_SECRET = process.env.JWT_SECRET as string;
-
-if (!JWT_SECRET) {
-  throw new Error("FATAL: JWT_SECRET environment variable is not set.");
-}
+// JWT_SECRET validated at request time
 
 export async function GET(request: NextRequest) {
+  const JWT_SECRET = process.env.JWT_SECRET;
+  if (!JWT_SECRET) {
+    return NextResponse.json({ hasSpun: false, error: "Server config error" }, { status: 500 });
+  }
+
   const token = request.cookies.get("veloria_lucky_draw")?.value;
   
   if (!token) {

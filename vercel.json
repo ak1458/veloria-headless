@@ -23,7 +23,7 @@
       ]
     },
     {
-      "source": "/api/(.*)",
+      "source": "/api/((?!media/).*)",
       "headers": [
         {
           "key": "Cache-Control",
@@ -33,6 +33,14 @@
     }
   ],
   "rewrites": [
+    {
+      "source": "/wp-content/:path*",
+      "destination": "/api/media/:path*"
+    },
+    {
+      "source": "/wp-includes/:path*",
+      "destination": "https://wp.veloriavault.com/wp-includes/:path*"
+    },
     {
       "source": "/.env",
       "destination": "/404"
@@ -45,7 +53,7 @@
   "redirects": [
     {
       "source": "/wp-admin",
-      "destination": "https://veloriavault.com/wp-admin",
+      "destination": "https://wp.veloriavault.com/wp-admin",
       "permanent": false
     }
   ]

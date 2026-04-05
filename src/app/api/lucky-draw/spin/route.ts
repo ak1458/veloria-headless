@@ -3,11 +3,7 @@ import jwt from "jsonwebtoken";
 import { RateLimiter } from "@/lib/rate-limit";
 import { getClientIp } from "@/lib/request";
 
-const JWT_SECRET = process.env.JWT_SECRET as string;
-
-if (!JWT_SECRET) {
-  throw new Error("FATAL: JWT_SECRET environment variable is not set.");
-}
+// JWT_SECRET validated at request time
 
 const OPTIONS = [
   { discount: 5, weight: 50 },    // 50% chance
@@ -29,6 +25,11 @@ function getRandomDiscount() {
 const spinTracker = new RateLimiter(1, 30 * 24 * 60 * 60 * 1000);
 
 export async function POST(request: NextRequest) {
+  const JWT_SECRET = process.env.JWT_SECRET;
+  if (!JWT_SECRET) {
+    return NextResponse.json({ success: false, error: "Server config error" }, { status: 500 });
+  }
+
   const ip = getClientIp(request);
   
   if (ip !== "unknown" && spinTracker.hasRecord(ip)) {

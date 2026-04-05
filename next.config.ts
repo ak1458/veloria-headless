@@ -11,6 +11,14 @@ const nextConfig: NextConfig = {
     unoptimized: false,
     remotePatterns: [
       {
+        protocol: "http",
+        hostname: "145.79.212.69",
+      },
+      {
+        protocol: "https",
+        hostname: "wp.veloriavault.com",
+      },
+      {
         protocol: "https",
         hostname: "veloriavault.com",
       },
@@ -37,9 +45,9 @@ const nextConfig: NextConfig = {
               "default-src 'self'",
               "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://checkout.razorpay.com https://*.razorpay.com",
               "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
-              "img-src 'self' blob: data: https://*.veloriavault.com https://veloriavault.com https://*.wp.com https://*.razorpay.com",
+              "img-src 'self' https: http: blob: data:",
               "font-src 'self' https://fonts.gstatic.com",
-              "connect-src 'self' https://*.veloriavault.com https://veloriavault.com https://*.razorpay.com https://api.razorpay.com",
+              "connect-src 'self' http://145.79.212.69 https://*.veloriavault.com https://veloriavault.com https://*.razorpay.com https://api.razorpay.com",
               "frame-src 'self' https://checkout.razorpay.com https://api.razorpay.com",
               "frame-ancestors 'none'",
               "base-uri 'self'",
@@ -52,11 +60,20 @@ const nextConfig: NextConfig = {
   },
   
   // Proxy wp-content requests to WordPress server (product images, CSS, etc.)
+  // Routes through our API media proxy because:
+  // - veloriavault.com DNS → Vercel (would loop back if used in rewrite)
+  // - wp.veloriavault.com DNS → Hostinger, but LiteSpeed only serves static
+  //   files for the "veloriavault.com" vhost, returning 404 for wp.* hostname
+  // - The API proxy fetches from the IP with Host: veloriavault.com header
   async rewrites() {
     return [
       {
         source: "/wp-content/:path*",
-        destination: "http://145.79.212.69/wp-content/:path*",
+        destination: "/api/media/:path*",
+      },
+      {
+        source: "/wp-includes/:path*",
+        destination: "https://wp.veloriavault.com/wp-includes/:path*",
       },
     ];
   },

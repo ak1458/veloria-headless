@@ -23,18 +23,9 @@ const securityHeaders = {
   // Permissions policy (limit browser features)
   "Permissions-Policy": "camera=(), microphone=(), geolocation=(), interest-cohort=()",
   
-  // Content Security Policy
-  "Content-Security-Policy": [
-    "default-src 'self'",
-    "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://checkout.razorpay.com https://cdn.razorpay.com",
-    "style-src 'self' 'unsafe-inline'",
-    "img-src 'self' https: data: blob:",
-    "font-src 'self' https://fonts.gstatic.com",
-    "connect-src 'self' https://veloriavault.com https://api.razorpay.com https://lumberjack.razorpay.com https://cdn.razorpay.com",
-    "frame-src https://checkout.razorpay.com https://api.razorpay.com",
-    "base-uri 'self'",
-    "form-action 'self'",
-  ].join("; "),
+  // Content Security Policy is set in next.config.ts (async headers())
+  // to avoid conflict. Do NOT duplicate it here — the middleware runs first
+  // and would override the more permissive next.config.ts CSP.
   
   // Strict transport security (HTTPS only)
   "Strict-Transport-Security": "max-age=31536000; includeSubDomains; preload",
