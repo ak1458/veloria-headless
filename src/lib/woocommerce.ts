@@ -95,12 +95,17 @@ const DEFAULT_REVALIDATE_SECONDS = 300;
  */
 function rewriteMediaUrl(url: string | undefined | null): string {
   if (!url) return "";
-  // Strip all known WordPress domains and make URLs relative.
-  // The relative /wp-content/... paths are caught by next.config.ts rewrites
-  // which proxy them through our /api/media/* handler.
-  return url
+  // Use the native wp.veloriavault.com URL for all media
+  // Since we fixed the backend to serve static files natively via this domain,
+  // we do not need relative paths or proxying anymore.
+  let cleanUrl = url
     .replace(/^https?:\/\/(?:www\.)?(?:wp\.)?veloriavault\.com/i, "")
     .replace(/^http:\/\/145\.79\.212\.69/i, "");
+    
+  if (cleanUrl.startsWith("/wp-content")) {
+    return "https://wp.veloriavault.com" + cleanUrl;
+  }
+  return url;
 }
 
 function logToFile(_msg: string) {
