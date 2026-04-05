@@ -51,6 +51,16 @@ const nextConfig: NextConfig = {
     ];
   },
   
+  // Proxy wp-content requests to WordPress server (product images, CSS, etc.)
+  async rewrites() {
+    return [
+      {
+        source: "/wp-content/:path*",
+        destination: "http://145.79.212.69/wp-content/:path*",
+      },
+    ];
+  },
+
   // Environment variables that should be available at build time
   env: {
     NEXT_PUBLIC_SITE_URL: process.env.NEXT_PUBLIC_SITE_URL,
