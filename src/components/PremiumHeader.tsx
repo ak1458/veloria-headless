@@ -9,8 +9,8 @@ import { Menu, X, ShoppingBag, Heart, User, ChevronDown, Package } from "lucide-
 import { motion, AnimatePresence } from "framer-motion";
 import CartDrawer from "./CartDrawer";
 
-const DESKTOP_LOGO = "/wp-content/uploads/2026/02/logo.svg";
-const MOBILE_LOGO = "/wp-content/uploads/2026/01/logo.svg";
+const DESKTOP_LOGO = "https://veloriavault.com/wp-content/uploads/2026/02/logo.svg";
+const MOBILE_LOGO = "https://veloriavault.com/wp-content/uploads/2026/02/logo.svg";
 
 type SubItem = { label: string; href: string };
 type MenuColumn = { title: string; items: SubItem[] };
@@ -140,6 +140,7 @@ export default function PremiumHeader() {
                   width={196}
                   height={48}
                   priority
+                  unoptimized
                   className="h-12 w-auto transition-all duration-300"
                 />
               </Link>
@@ -252,6 +253,7 @@ export default function PremiumHeader() {
                   width={130}
                   height={40}
                   priority
+                  unoptimized
                   className="h-10 w-auto"
                 />
               </Link>
@@ -311,6 +313,7 @@ export default function PremiumHeader() {
                     alt="Veloria Vault" 
                     width={130}
                     height={40}
+                    unoptimized
                     className="h-10 w-auto"
                   />
                 </Link>

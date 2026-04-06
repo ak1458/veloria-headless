@@ -134,23 +134,23 @@ export default function AboutPage() {
       {/* Values Section */}
       <section className="py-16 md:py-24 bg-[#1a1a1a] text-white">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-12">
+          <div className="text-center mb-10 md:mb-12">
             <h2 className="text-3xl md:text-4xl font-serif mb-4">Our Values</h2>
             <p className="text-gray-400 max-w-2xl mx-auto">
               What drives us to create exceptional leather goods
             </p>
           </div>
           
-          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-8">
+          <div className="grid grid-cols-2 gap-x-4 gap-y-6 sm:gap-8 lg:grid-cols-4">
             {[
               { title: "Quality", desc: "Premium materials and meticulous craftsmanship in every piece" },
               { title: "Timeless", desc: "Designs that transcend trends and last for generations" },
               { title: "Functional", desc: "Practical elegance that fits your everyday life" },
               { title: "Authentic", desc: "Genuine leather with honest, transparent sourcing" },
             ].map((value) => (
-              <div key={value.title} className="text-center p-6">
-                <h3 className="text-xl font-serif mb-3 text-[#b59a5c]">{value.title}</h3>
-                <p className="text-gray-400 text-sm leading-relaxed">{value.desc}</p>
+              <div key={value.title} className="text-center px-2 py-3 sm:p-6">
+                <h3 className="mb-2 font-serif text-lg text-[#b59a5c] sm:mb-3 sm:text-xl">{value.title}</h3>
+                <p className="text-xs leading-relaxed text-gray-400 sm:text-sm">{value.desc}</p>
               </div>
             ))}
           </div>
