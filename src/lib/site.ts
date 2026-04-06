@@ -1,4 +1,3 @@
-const wcApiUrl = process.env.WC_API_URL;
 const LOCAL_WP_CONTENT = "/wp-content";
 
 export const LEGACY_SITE_URL =

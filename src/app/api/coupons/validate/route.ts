@@ -21,11 +21,19 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ success: false, error: "Server configuration error" }, { status: 500 });
     }
     const searchParams = request.nextUrl.searchParams;
+    const existingCouponParams = [
+      ...searchParams.getAll("existingCoupons[]"),
+      ...searchParams
+        .get("existingCoupons")
+        ?.split(",")
+        .map((code) => code.trim())
+        .filter(Boolean) ?? [],
+    ];
     const body = {
       code: searchParams.get("code"),
       subtotal: parseFloat(searchParams.get("subtotal") || "0"),
       itemCount: parseInt(searchParams.get("itemCount") || "1", 10),
-      existingCoupons: searchParams.getAll("existingCoupons[]") || [],
+      existingCoupons: existingCouponParams,
     };
 
     const validatedData = validateSchema.parse(body);

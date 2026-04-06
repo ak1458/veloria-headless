@@ -20,7 +20,7 @@ export default function OrderSummary({ showCouponSection = true }: OrderSummaryP
   } = useCouponStore();
 
   useEffect(() => {
-    calculateDiscounts(items);
+    void calculateDiscounts(items);
   }, [items, isPrepaid, calculateDiscounts]);
 
   if (items.length === 0) {
@@ -105,16 +105,6 @@ export default function OrderSummary({ showCouponSection = true }: OrderSummaryP
           <span className="text-gray-500">Subtotal</span>
           <span className="font-semibold">₹{subtotal.toLocaleString("en-IN")}</span>
         </div>
-
-        {/* Tier Discount */}
-        {calculation?.tierDiscount ? (
-          <div className="flex justify-between text-green-600">
-            <span className="text-xs">
-              {calculation.itemCount >= 2 ? "Buy 2 Get 20%" : "Buy 1 Get 15%"}
-            </span>
-            <span className="font-medium text-xs">-₹{calculation.tierDiscount.toLocaleString("en-IN")}</span>
-          </div>
-        ) : null}
 
         {/* All Discounts (Tiers, Coupons, Prepaid) */}
         {calculation?.savingsBreakdown?.map((saving, idx) => (

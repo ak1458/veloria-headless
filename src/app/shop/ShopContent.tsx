@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useRef, useState, useCallback, Suspense } from "react";
+import { useMemo, useRef, useCallback, Suspense } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import PremiumProductCard from "@/components/PremiumProductCard";
@@ -33,7 +33,6 @@ function ShopContentInner({
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const searchInputRef = useRef<HTMLInputElement>(null);
-  const [isUpdating, setIsUpdating] = useState(false);
 
   // Safely get URL params with fallbacks to initial props
   let categorySlug = initialCategorySlug;
@@ -78,7 +77,6 @@ function ShopContentInner({
 
   const updateQuery = useCallback((updates: { category?: string; search?: string }) => {
     try {
-      setIsUpdating(true);
       const nextParams = new URLSearchParams(searchParams?.toString() || "");
 
       if (updates.category) {
@@ -97,8 +95,6 @@ function ShopContentInner({
       router.push(queryString ? `${pathname}?${queryString}` : pathname, { scroll: false });
     } catch (e) {
       console.error("Error updating query:", e);
-    } finally {
-      setIsUpdating(false);
     }
   }, [pathname, router, searchParams]);
 

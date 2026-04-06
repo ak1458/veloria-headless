@@ -9,12 +9,10 @@ interface StaticPageProps {
 
 export default async function StaticPage({ slug, title }: StaticPageProps) {
   let page = null;
-  let error = null;
   
   try {
     page = await getPageBySlug(slug);
   } catch (e) {
-    error = e;
     console.error(`Error fetching page ${slug}:`, e);
   }
 

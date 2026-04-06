@@ -31,7 +31,7 @@ export const useCouponStore = create<CouponState>()(
     (set, get) => ({
       appliedCouponCodes: [],
       calculation: null,
-      isPrepaid: null,
+      isPrepaid: true,
       isLoading: false,
       error: null,
 
@@ -42,10 +42,6 @@ export const useCouponStore = create<CouponState>()(
         // Check if already applied
         if (appliedCouponCodes.includes(normalizedCode)) {
           return { success: false, error: "Coupon already applied" };
-        }
-
-        if (false) {
-          return { success: false, error: "Only one coupon can be applied per order" };
         }
 
         // Validate coupon
@@ -133,7 +129,7 @@ export const useCouponStore = create<CouponState>()(
                 quantity: item.quantity,
               })),
               appliedCouponCodes,
-              isPrepaid,
+              isPrepaid: isPrepaid ?? true,
             }),
           });
 
@@ -177,9 +173,17 @@ export const useCouponStore = create<CouponState>()(
         try {
           const subtotal = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
           const itemCount = items.reduce((sum, item) => sum + item.quantity, 0);
-          const response = await fetch(
-            `/api/coupons/validate?code=${encodeURIComponent(code)}&subtotal=${subtotal}&itemCount=${itemCount}&existingCoupons=${encodeURIComponent(get().appliedCouponCodes.join(","))}`
-          );
+          const params = new URLSearchParams({
+            code,
+            subtotal: String(subtotal),
+            itemCount: String(itemCount),
+          });
+
+          get().appliedCouponCodes.forEach((appliedCode) => {
+            params.append("existingCoupons[]", appliedCode);
+          });
+
+          const response = await fetch(`/api/coupons/validate?${params.toString()}`);
           const data = await response.json();
           return { valid: data.success, error: data.error };
         } catch {

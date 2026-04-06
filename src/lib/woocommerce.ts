@@ -45,8 +45,8 @@ export interface WCProduct {
   regular_price: string;
   sale_price: string;
   on_sale: boolean;
-  image?: WCImage;         // WC REST API v3: singular image object (used by variations)
-  images: WCImage[];        // WC REST API v3: image gallery array (used by parent products)
+  image?: WCImage;
+  images: WCImage[];
   categories: WCCategory[];
   average_rating: string;
   rating_count: number;
@@ -72,6 +72,10 @@ export interface WCReview {
   date_created: string;
   date_created_gmt: string;
   product_id: number;
+  product_name?: string;
+  product_permalink?: string;
+  product_image?: WCImage;
+  formatted_date_created?: string;
   status: string;
   reviewer: string;
   reviewer_email: string;
@@ -83,89 +87,181 @@ export interface WCReview {
   };
 }
 
-const WC_API_URL = process.env.WC_API_URL?.trim();
-const CONSUMER_KEY = process.env.WC_CONSUMER_KEY?.trim();
-const CONSUMER_SECRET = process.env.WC_CONSUMER_SECRET?.trim();
-const DEFAULT_REVALIDATE_SECONDS = 300;
-
-/**
- * Rewrite media URLs to be relative so they are proxied through our Next.js server.
- * This avoids SSL/DNS issues by keeping all requests on the main domain.
- * The absolute path will be caught by the next.config.ts rewrites rule.
- */
-function rewriteMediaUrl(url: string | undefined | null): string {
-  if (!url) return "";
-  // Use the native wp.veloriavault.com URL for all media
-  // Since we fixed the backend to serve static files natively via this domain,
-  // we do not need relative paths or proxying anymore.
-  let cleanUrl = url
-    .replace(/^https?:\/\/(?:www\.)?(?:wp\.)?veloriavault\.com/i, "")
-    .replace(/^http:\/\/145\.79\.212\.69/i, "");
-    
-  if (cleanUrl.startsWith("/wp-content")) {
-    return "https://wp.veloriavault.com" + cleanUrl;
-  }
-  return url;
-}
-
-function logToFile(_msg: string) {
-  // Silent fallback for client usage
-  void _msg;
-}
-
 interface WCFetchOptions {
   revalidate?: number | false;
   cacheBustVersion?: string | false;
 }
 
-interface LegacyVariationGalleryItem {
-  href?: string;
-  data_src?: string;
-  data_thumb?: string;
-  data_large_image?: string;
-  image?: string;
+interface StorePriceInfo {
+  price?: string;
+  regular_price?: string;
+  sale_price?: string;
+  currency_minor_unit?: number;
 }
 
-type LegacyVariationGalleryMap = Record<string, LegacyVariationGalleryItem[]>;
+interface StoreImage {
+  id?: number;
+  src?: string;
+  thumbnail?: string;
+  alt?: string;
+  name?: string;
+}
 
-export async function wcFetch<T>(
+interface StoreCategory {
+  id: number;
+  name: string;
+  slug: string;
+  description?: string;
+  count?: number;
+  image?: StoreImage | null;
+  permalink?: string;
+}
+
+interface StoreAttributeTerm {
+  id?: number;
+  name: string;
+  slug: string;
+}
+
+interface StoreAttribute {
+  id?: number;
+  name: string;
+  taxonomy?: string;
+  has_variations?: boolean;
+  terms?: StoreAttributeTerm[];
+}
+
+interface StoreProduct {
+  id: number;
+  name: string;
+  slug: string;
+  permalink: string;
+  type: string;
+  parent?: number;
+  variation?: string;
+  description?: string;
+  short_description?: string;
+  on_sale?: boolean;
+  prices?: StorePriceInfo;
+  price_html?: string;
+  average_rating?: string;
+  review_count?: number;
+  images?: StoreImage[];
+  categories?: StoreCategory[];
+  attributes?: StoreAttribute[];
+  variations?: number[];
+  sku?: string;
+  is_in_stock?: boolean;
+  is_on_backorder?: boolean;
+  low_stock_remaining?: number | null;
+}
+
+interface StoreReview {
+  id: number;
+  date_created: string;
+  formatted_date_created?: string;
+  date_created_gmt: string;
+  product_id: number;
+  product_name?: string;
+  product_permalink?: string;
+  product_image?: StoreImage;
+  review?: string;
+  reviewer?: string;
+  rating?: number;
+  verified?: boolean;
+  reviewer_avatar_urls?: Record<string, string>;
+}
+
+const WC_API_URL = process.env.WC_API_URL?.trim();
+const CONSUMER_KEY = process.env.WC_CONSUMER_KEY?.trim();
+const CONSUMER_SECRET = process.env.WC_CONSUMER_SECRET?.trim();
+const DEFAULT_REVALIDATE_SECONDS = 300;
+
+const STORE_API_ORIGIN =
+  process.env.NEXT_PUBLIC_STORE_API_URL?.trim()?.replace(/\/wp-json\/wc\/store\/v1\/?$/, "") ||
+  process.env.NEXT_PUBLIC_LEGACY_SITE_URL?.trim()?.replace(/\/$/, "") ||
+  WC_API_URL?.replace(/\/wp-json\/wc\/v3\/?$/, "").replace("://wp.", "://") ||
+  "https://veloriavault.com";
+
+const STORE_API_URL = `${STORE_API_ORIGIN.replace(/\/$/, "")}/wp-json/wc/store/v1`;
+
+function rewriteMediaUrl(url: string | undefined | null): string {
+  if (!url) {
+    return "";
+  }
+
+  if (url.startsWith("/wp-content") || url.startsWith("/wp-includes")) {
+    return url;
+  }
+
+  try {
+    const parsed = new URL(url, STORE_API_ORIGIN);
+
+    if (
+      parsed.pathname.startsWith("/wp-content") ||
+      parsed.pathname.startsWith("/wp-includes")
+    ) {
+      return `${parsed.pathname}${parsed.search}`;
+    }
+  } catch {
+    return url;
+  }
+
+  return url;
+}
+
+function rewriteAllMediaUrls(data: unknown): unknown {
+  if (typeof data === "string") {
+    return rewriteMediaUrl(data);
+  }
+
+  if (Array.isArray(data)) {
+    return data.map(rewriteAllMediaUrls);
+  }
+
+  if (data && typeof data === "object") {
+    const result: Record<string, unknown> = {};
+
+    for (const [key, value] of Object.entries(data as Record<string, unknown>)) {
+      if (
+        typeof value === "string" &&
+        ["src", "thumbnail", "href", "data_src", "data_thumb", "data_large_image", "image"].includes(key)
+      ) {
+        result[key] = rewriteMediaUrl(value);
+      } else if (typeof value === "object" || Array.isArray(value)) {
+        result[key] = rewriteAllMediaUrls(value);
+      } else {
+        result[key] = value;
+      }
+    }
+
+    return result;
+  }
+
+  return data;
+}
+
+async function storeFetch<T>(
   endpoint: string,
   params: Record<string, string | number | boolean> = {},
   options: WCFetchOptions = {},
 ): Promise<T> {
-  if (!WC_API_URL || !CONSUMER_KEY || !CONSUMER_SECRET) {
-    console.warn("MISSING WC CREDENTIALS — Build-time skip or misconfiguration.");
-    // Return safe fallback for build-time safety
-    if (endpoint.includes("/products")) return [] as unknown as T;
-    return {} as unknown as T;
-  }
-
-  const url = new URL(`${WC_API_URL}${endpoint}`);
+  const url = new URL(`${STORE_API_URL}${endpoint}`);
 
   Object.entries(params).forEach(([key, value]) => {
-    if (value !== undefined && value !== null) {
+    if (value !== undefined && value !== null && value !== "") {
       url.searchParams.append(key, String(value));
     }
   });
 
-  // Remove newlines and use standard Basic Auth header
-  const auth = Buffer.from(`${CONSUMER_KEY}:${CONSUMER_SECRET}`).toString("base64");
-
-  const cacheBustVersion = options.cacheBustVersion ?? "3";
+  const cacheBustVersion = options.cacheBustVersion ?? "4";
   if (cacheBustVersion) {
-    url.searchParams.append("v", cacheBustVersion);
-  }
-
-  const finalUrl = url.toString();
-  if (process.env.NODE_ENV !== "production") {
-    console.log(`[wcFetch] FETCHING: ${finalUrl}`);
+    url.searchParams.set("v", cacheBustVersion);
   }
 
   try {
-    const response = await fetch(finalUrl, {
-      method: "GET",
+    const response = await fetch(url.toString(), {
       headers: {
-        Authorization: `Basic ${auth}`,
         Accept: "application/json",
       },
       ...(options.revalidate === false
@@ -178,177 +274,268 @@ export async function wcFetch<T>(
     });
 
     if (!response.ok) {
-      const errorMsg = `WooCommerce API error: ${response.status}`;
-      logToFile(errorMsg);
-      // During build, return an empty version of the response instead of throwing
-      if (finalUrl.includes("/products")) {
-        return [] as unknown as T;
-      }
-      return {} as unknown as T;
+      const fallback = endpoint.includes("/products") || endpoint.includes("/reviews") || endpoint.includes("/categories")
+        ? []
+        : {};
+      return fallback as T;
     }
 
     const data = await response.json();
-    logToFile(
-      `[wcFetch] SUCCESS: Received ${Array.isArray(data) ? data.length : "object"} items.`
-    );
-
-    // Rewrite all media URLs in the response so images load from wp.veloriavault.com
     return rewriteAllMediaUrls(data) as T;
   } catch (error) {
-    console.error("[wcFetch] Error:", error);
-    // Return safe fallback to prevent build failure
-    if (finalUrl.includes("/products")) {
-      return [] as unknown as T;
-    }
-    return {} as unknown as T;
+    console.error("[storeFetch] Error:", endpoint, error);
+    const fallback = endpoint.includes("/products") || endpoint.includes("/reviews") || endpoint.includes("/categories")
+      ? []
+      : {};
+    return fallback as T;
   }
 }
 
-/**
- * Recursively rewrite all image/media URLs in API response data.
- * This ensures every image from WooCommerce points to wp.veloriavault.com
- * instead of veloriavault.com (which now serves Next.js, not WordPress).
- */
-function rewriteAllMediaUrls(data: unknown): unknown {
-  if (typeof data === "string") {
-    return rewriteMediaUrl(data);
-  }
-  if (Array.isArray(data)) {
-    return data.map(rewriteAllMediaUrls);
-  }
-  if (data && typeof data === "object") {
-    const result: Record<string, unknown> = {};
-    for (const [key, value] of Object.entries(data as Record<string, unknown>)) {
-      // Only rewrite string values for URL-like keys to avoid corrupting other data
-      if (typeof value === "string" && (key === "src" || key === "href" || key === "data_src" || key === "data_thumb" || key === "data_large_image" || key === "image")) {
-        result[key] = rewriteMediaUrl(value);
-      } else if (typeof value === "object" || Array.isArray(value)) {
-        result[key] = rewriteAllMediaUrls(value);
-      } else {
-        result[key] = value;
-      }
+async function storeFetchCollection<T>(
+  endpoint: string,
+  params: Record<string, string | number | boolean> = {},
+  options: WCFetchOptions = {},
+): Promise<T[]> {
+  const perPage = Number(params.per_page ?? 100);
+  const initialPage = Number(params.page ?? 1);
+  const results: T[] = [];
+
+  let page = initialPage;
+
+  while (true) {
+    const pageItems = await storeFetch<T[]>(
+      endpoint,
+      {
+        ...params,
+        per_page: perPage,
+        page,
+      },
+      options,
+    );
+
+    if (!Array.isArray(pageItems) || pageItems.length === 0) {
+      break;
     }
-    return result;
+
+    results.push(...pageItems);
+
+    if (pageItems.length < perPage || params.page) {
+      break;
+    }
+
+    page += 1;
   }
-  return data;
+
+  return results;
 }
 
-const CATALOG_PRODUCT_FIELDS = [
-  "id",
-  "name",
-  "slug",
-  "permalink",
-  "type",
-  "parent_id",
-  "price",
-  "regular_price",
-  "sale_price",
-  "on_sale",
-  "images",
-  "categories",
-  "attributes",
-  "menu_order",
-  "stock_status",
-  "stock_quantity",
-];
+async function adminFetch<T>(
+  endpoint: string,
+  params: Record<string, string | number | boolean> = {},
+  options: WCFetchOptions = {},
+): Promise<T> {
+  if (!WC_API_URL || !CONSUMER_KEY || !CONSUMER_SECRET) {
+    const fallback = endpoint.includes("/coupons") ? [] : {};
+    return fallback as T;
+  }
 
-function toCatalogProduct(product: Partial<WCProduct>): WCProduct {
-  const images = (product.images ?? [])
-    .map((image) => ({
-      id: image.id,
-      src: rewriteMediaUrl(image.src),
-      alt: image.alt ?? "",
-      name: image.name,
-    }));
+  const url = new URL(`${WC_API_URL}${endpoint}`);
+
+  Object.entries(params).forEach(([key, value]) => {
+    if (value !== undefined && value !== null && value !== "") {
+      url.searchParams.append(key, String(value));
+    }
+  });
+
+  try {
+    const response = await fetch(url.toString(), {
+      headers: {
+        Accept: "application/json",
+        Authorization: `Basic ${Buffer.from(`${CONSUMER_KEY}:${CONSUMER_SECRET}`).toString("base64")}`,
+      },
+      ...(options.revalidate === false
+        ? { cache: "no-store" as const }
+        : {
+            next: {
+              revalidate: options.revalidate ?? DEFAULT_REVALIDATE_SECONDS,
+            },
+          }),
+    });
+
+    if (!response.ok) {
+      const fallback = endpoint.includes("/coupons") ? [] : {};
+      return fallback as T;
+    }
+
+    const data = await response.json();
+    return rewriteAllMediaUrls(data) as T;
+  } catch (error) {
+    console.error("[adminFetch] Error:", endpoint, error);
+    const fallback = endpoint.includes("/coupons") ? [] : {};
+    return fallback as T;
+  }
+}
+
+function fallbackSlug(value: string): string {
+  return value
+    .toLowerCase()
+    .replace(/&/g, " and ")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/(^-|-$)/g, "");
+}
+
+function formatMinorUnitPrice(value: string | undefined, minorUnit = 2): string {
+  const parsed = Number.parseInt(value || "0", 10);
+  if (!Number.isFinite(parsed)) {
+    return "0";
+  }
+
+  return (parsed / 10 ** minorUnit).toFixed(minorUnit);
+}
+
+function mapStoreImage(image: StoreImage | undefined | null, fallbackAlt = ""): WCImage | null {
+  if (!image?.src) {
+    return null;
+  }
 
   return {
-    id: product.id ?? 0,
-    name: product.name ?? "",
-    slug: product.slug ?? "",
-    permalink: product.permalink ?? "",
-    type: product.type ?? "variation",
-    parent_id: product.parent_id ?? 0,
-    description: "",
-    short_description: "",
-    price: product.price ?? "",
-    regular_price: product.regular_price ?? "",
-    sale_price: product.sale_price ?? "",
+    id: image.id ?? 0,
+    src: rewriteMediaUrl(image.src),
+    alt: image.alt || fallbackAlt,
+    name: image.name,
+  };
+}
+
+function mapStoreCategory(category: StoreCategory): WCCategory {
+  return {
+    id: category.id,
+    name: category.name,
+    slug: category.slug,
+    description: category.description || "",
+    count: category.count ?? 0,
+    image: mapStoreImage(category.image, category.name),
+  };
+}
+
+function parseVariationAttributes(variation: string | undefined): WCAttribute[] {
+  if (!variation) {
+    return [];
+  }
+
+  const attributes: WCAttribute[] = [];
+
+  variation.split(/\s*,\s*/).forEach((segment) => {
+    const [rawName, ...optionParts] = segment.split(":");
+    const name = rawName?.trim();
+    const option = optionParts.join(":").trim();
+
+    if (!name || !option) {
+      return;
+    }
+
+    const normalizedName = name.toLowerCase();
+    const slug = normalizedName === "color" ? "pa_color" : fallbackSlug(name);
+
+    attributes.push({
+      id: 0,
+      name,
+      slug,
+      option,
+      options: [option],
+      variation: true,
+      visible: true,
+    });
+  });
+
+  return attributes;
+}
+
+function mapStoreAttributes(product: StoreProduct): WCAttribute[] {
+  const variationAttributes = parseVariationAttributes(product.variation);
+  if (variationAttributes.length > 0) {
+    return variationAttributes;
+  }
+
+  return (product.attributes ?? []).map((attribute) => ({
+    id: attribute.id ?? 0,
+    name: attribute.name,
+    slug: attribute.taxonomy || fallbackSlug(attribute.name),
+    option: "",
+    options: attribute.terms?.map((term) => term.name) ?? [],
+    variation: attribute.has_variations ?? false,
+    visible: true,
+  }));
+}
+
+function buildDisplayName(product: StoreProduct): string {
+  const variationAttributes = parseVariationAttributes(product.variation);
+  if (variationAttributes.length === 0) {
+    return product.name;
+  }
+
+  const suffix = variationAttributes.map((attribute) => attribute.option).join(" / ");
+  return `${product.name} - ${suffix}`;
+}
+
+function mapStoreProduct(product: StoreProduct): WCProduct {
+  const images = (product.images ?? [])
+    .map((image) => mapStoreImage(image, product.name))
+    .filter((image): image is WCImage => Boolean(image));
+
+  const minorUnit = product.prices?.currency_minor_unit ?? 2;
+
+  return {
+    id: product.id,
+    name: buildDisplayName(product),
+    slug: product.slug,
+    permalink: product.permalink || "",
+    type: product.type || (product.parent ? "variation" : "variable"),
+    parent_id: product.parent ?? 0,
+    description: product.description || "",
+    short_description: product.short_description || "",
+    price: formatMinorUnitPrice(product.prices?.price, minorUnit),
+    regular_price: formatMinorUnitPrice(product.prices?.regular_price, minorUnit),
+    sale_price: formatMinorUnitPrice(product.prices?.sale_price, minorUnit),
     on_sale: product.on_sale ?? false,
     image: images[0],
     images,
-    categories: (product.categories ?? []).map((category) => ({
-      id: category.id,
-      name: category.name,
-      slug: category.slug,
-      description: category.description ?? "",
-      count: category.count ?? 0,
-      image: category.image ?? null,
-    })),
-    average_rating: "0",
-    rating_count: 0,
-    stock_status: product.stock_status ?? "instock",
-    stock_quantity: product.stock_quantity ?? null,
-    sku: "",
+    categories: (product.categories ?? []).map(mapStoreCategory),
+    average_rating: product.average_rating || "0",
+    rating_count: product.review_count ?? 0,
+    stock_status: product.is_in_stock
+      ? product.is_on_backorder
+        ? "onbackorder"
+        : "instock"
+      : "outofstock",
+    stock_quantity: product.low_stock_remaining ?? null,
+    sku: product.sku || "",
     related_ids: [],
-    attributes: (product.attributes ?? []).map((attribute) => ({
-      id: attribute.id,
-      name: attribute.name,
-      slug: attribute.slug,
-      option: attribute.option,
-      options: attribute.options,
-      variation: attribute.variation,
-      visible: attribute.visible,
-    })),
-    variations: [],
-    menu_order: product.menu_order ?? 0,
+    attributes: mapStoreAttributes(product),
+    variations: product.variations ?? [],
+    menu_order: 0,
+    price_html: product.price_html,
     meta_data: [],
   };
 }
 
-export async function getProducts(options: {
-  per_page?: number;
-  page?: number;
-  category?: number;
-  search?: string;
-  slug?: string;
-  orderby?: string;
-  order?: string;
-  include?: number[];
-  type?: string;
-  fields?: string[];
-} = {}): Promise<WCProduct[]> {
-  const {
-    per_page = 20,
-    page = 1,
-    orderby = "menu_order",
-    order = "asc",
-    include,
-    fields,
-    ...rest
-  } = options;
-
-  const params: Record<string, string | number | boolean> = {
-    per_page,
-    page,
-    orderby,
-    order,
+function mapStoreReview(review: StoreReview): WCReview {
+  return {
+    id: review.id,
+    date_created: review.date_created,
+    formatted_date_created: review.formatted_date_created,
+    date_created_gmt: review.date_created_gmt,
+    product_id: review.product_id,
+    product_name: review.product_name,
+    product_permalink: review.product_permalink,
+    product_image: mapStoreImage(review.product_image, review.product_name || "") || undefined,
+    status: "approved",
+    reviewer: review.reviewer || "Veloria Customer",
+    reviewer_email: "",
+    review: review.review || "",
+    rating: review.rating ?? 0,
+    verified: review.verified ?? false,
+    reviewer_avatar_urls: review.reviewer_avatar_urls || {},
   };
-
-  if (rest.category) params.category = rest.category;
-  if (rest.search) params.search = rest.search;
-  if (rest.slug) params.slug = rest.slug;
-  if (rest.type) params.type = rest.type;
-  if (include?.length) params.include = include.join(",");
-  if (fields?.length) params._fields = fields.join(",");
-
-  const products = await wcFetch<WCProduct[]>("/products", params);
-  return products.sort((left, right) => {
-    if (left.menu_order !== right.menu_order) {
-      return left.menu_order - right.menu_order;
-    }
-
-    return (left.name ?? "").localeCompare(right.name ?? "");
-  });
 }
 
 function dedupeParentIds(products: Array<Pick<WCProduct, "parent_id">>): number[] {
@@ -374,93 +561,6 @@ const PRODUCT_SLUG_STOP_WORDS = new Set([
   "shoulder",
 ]);
 
-function extractHtmlAttribute(
-  markup: string | undefined,
-  attribute: string,
-): string | null {
-  if (!markup) {
-    return null;
-  }
-
-  const match = markup.match(new RegExp(`${attribute}="([^"]*)"`, "i"));
-  return match?.[1] || null;
-}
-
-function extractSerializedJson(
-  html: string,
-  variableName: string,
-): string | null {
-  const marker = `var ${variableName} =`;
-  const markerIndex = html.indexOf(marker);
-
-  if (markerIndex === -1) {
-    return null;
-  }
-
-  let startIndex = markerIndex + marker.length;
-  while (/\s/.test(html[startIndex] ?? "")) {
-    startIndex += 1;
-  }
-
-  const openingChar = html[startIndex];
-  const closingChar =
-    openingChar === "{"
-      ? "}"
-      : openingChar === "["
-        ? "]"
-        : null;
-
-  if (!closingChar) {
-    return null;
-  }
-
-  let depth = 0;
-  let inString = false;
-  let escaped = false;
-
-  for (let index = startIndex; index < html.length; index += 1) {
-    const char = html[index];
-
-    if (inString) {
-      if (escaped) {
-        escaped = false;
-        continue;
-      }
-
-      if (char === "\\") {
-        escaped = true;
-        continue;
-      }
-
-      if (char === '"') {
-        inString = false;
-      }
-
-      continue;
-    }
-
-    if (char === '"') {
-      inString = true;
-      continue;
-    }
-
-    if (char === openingChar) {
-      depth += 1;
-      continue;
-    }
-
-    if (char === closingChar) {
-      depth -= 1;
-
-      if (depth === 0) {
-        return html.slice(startIndex, index + 1);
-      }
-    }
-  }
-
-  return null;
-}
-
 function extractProductSlugFromPermalink(permalink?: string | null): string | null {
   if (!permalink) {
     return null;
@@ -481,145 +581,119 @@ function extractProductSlugFromPermalink(permalink?: string | null): string | nu
   }
 }
 
-async function getLegacyVariationGalleryMap(
-  productPermalink?: string,
-): Promise<LegacyVariationGalleryMap> {
-  if (!productPermalink) {
-    return {};
+function buildSlugAliases(value: string): string[] {
+  const normalizedValue = fallbackSlug(value);
+  const aliases = new Set<string>([normalizedValue]);
+  const trimmedTokens = normalizedValue
+    .split("-")
+    .filter(Boolean)
+    .filter((token) => !PRODUCT_SLUG_STOP_WORDS.has(token));
+
+  if (trimmedTokens.length) {
+    aliases.add(trimmedTokens.join("-"));
   }
 
-  try {
-    const legacyUrl = new URL(productPermalink, LEGACY_SITE_URL);
-    const response = await fetch(legacyUrl.toString(), {
-      next: { revalidate: DEFAULT_REVALIDATE_SECONDS },
-    });
-
-    if (!response.ok) {
-      throw new Error(`Legacy product page error: ${response.status}`);
-    }
-
-    const html = await response.text();
-    const serialized = extractSerializedJson(
-      html,
-      "woodmart_variation_gallery_data",
-    );
-
-    if (!serialized) {
-      return {};
-    }
-
-    const parsed = JSON.parse(serialized) as LegacyVariationGalleryMap;
-    return parsed && typeof parsed === "object" ? parsed : {};
-  } catch (error) {
-    console.error("Error fetching legacy variation gallery:", error);
-    return {};
-  }
+  return Array.from(aliases).filter(Boolean);
 }
 
-function buildVariationImagesFromLegacyGallery(
-  variation: WCProduct,
-  galleryItems: LegacyVariationGalleryItem[] | undefined,
-): WCImage[] {
-  const featuredImage = variation.image
-    ? {
-        id: variation.image.id,
-        src: rewriteMediaUrl(variation.image.src),
-        alt: variation.image.alt ?? variation.name ?? "",
-        name: variation.image.name,
-      }
-    : null;
+function findMatchedProduct(products: WCProduct[], requestedSlug: string): WCProduct | null {
+  const aliases = new Set(buildSlugAliases(requestedSlug));
+  const exactMatchers = [
+    (product: WCProduct) => {
+      const permalinkSlug = extractProductSlugFromPermalink(product.permalink);
+      return permalinkSlug ? aliases.has(permalinkSlug) : false;
+    },
+    (product: WCProduct) => aliases.has(fallbackSlug(product.slug)),
+    (product: WCProduct) => aliases.has(fallbackSlug(product.name)),
+  ];
 
-  const parsedImages = (galleryItems ?? [])
-    .map((item, index) => {
-      const src =
-        item.href ||
-        item.data_large_image ||
-        item.data_src ||
-        extractHtmlAttribute(item.image, "data-large_image") ||
-        extractHtmlAttribute(item.image, "src") ||
-        item.data_thumb;
+  for (const matcher of exactMatchers) {
+    const parentMatch =
+      products.find(
+        (product) =>
+          product.parent_id === 0 &&
+          product.type !== "variation" &&
+          matcher(product),
+      ) ?? null;
 
-      if (!src) {
-        return null;
-      }
-
-      return {
-        id:
-          featuredImage?.src === src
-            ? featuredImage.id
-            : variation.id * 100 + index + 1,
-        src: rewriteMediaUrl(src),
-        alt:
-          extractHtmlAttribute(item.image, "alt") ||
-          extractHtmlAttribute(item.image, "title") ||
-          variation.name ||
-          "",
-      };
-    })
-    .filter((image): image is WCImage => Boolean(image));
-
-  const images = [];
-  const seen = new Set<string>();
-
-  for (const image of parsedImages) {
-    if (seen.has(image.src)) {
-      continue;
+    if (parentMatch) {
+      return parentMatch;
     }
 
-    seen.add(image.src);
-    images.push(image);
+    const anyMatch = products.find((product) => matcher(product)) ?? null;
+    if (anyMatch) {
+      return anyMatch;
+    }
   }
 
-  if (featuredImage && !seen.has(featuredImage.src)) {
-    images.unshift(featuredImage);
-  }
-
-  if (images.length) {
-    return images;
-  }
-
-  if (variation.images?.length) {
-    return variation.images;
-  }
-
-  return featuredImage ? [featuredImage] : [];
+  return null;
 }
 
-async function getParentProductsFromVariations(search?: string): Promise<WCProduct[]> {
-  const variations = await getProducts({
-    per_page: 100,
+export async function getProducts(options: {
+  per_page?: number;
+  page?: number;
+  category?: number;
+  search?: string;
+  slug?: string;
+  orderby?: string;
+  order?: string;
+  include?: number[];
+  type?: string;
+  fields?: string[];
+} = {}): Promise<WCProduct[]> {
+  const {
+    per_page = 20,
+    page,
+    include,
+    fields: _fields,
+    category,
     search,
-    fields: ["id", "parent_id"],
-  });
-  const parentIds = dedupeParentIds(variations);
+    slug,
+    orderby,
+    order,
+    type,
+  } = options;
 
-  if (!parentIds.length) {
-    return [];
+  void _fields;
+
+  if (include?.length) {
+    return getProductsByIds(include);
   }
 
-  return getProducts({
-    include: parentIds,
-    per_page: parentIds.length,
-    orderby: "menu_order",
-    order: "asc",
+  const storeProducts = await storeFetch<StoreProduct[]>("/products", {
+    per_page,
+    page: page || 1,
+    search: search || "",
+    slug: slug || "",
+    type: type === "variation" ? "variation" : "",
+    orderby: orderby || "",
+    order: order || "",
   });
+
+  let products = storeProducts.map(mapStoreProduct);
+
+  if (category) {
+    products = products.filter((product) =>
+      product.categories.some((productCategory) => productCategory.id === category),
+    );
+  }
+
+  return products;
 }
 
 export async function getProductById(id: number): Promise<WCProduct | null> {
   try {
-    return await wcFetch<WCProduct>(`/products/${id}`);
+    const product = await storeFetch<StoreProduct>(`/products/${id}`);
+
+    if (!product || typeof product !== "object" || !("id" in product)) {
+      return null;
+    }
+
+    return mapStoreProduct(product);
   } catch (error) {
     console.error("Error fetching product by id:", error);
     return null;
   }
-}
-
-function fallbackSlug(value: string): string {
-  return value
-    .toLowerCase()
-    .replace(/&/g, " and ")
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/(^-|-$)/g, "");
 }
 
 export async function getProductBySlug(slug: string): Promise<WCProduct | null> {
@@ -640,57 +714,9 @@ export async function getProductBySlug(slug: string): Promise<WCProduct | null> 
       return matchedProduct;
     };
 
-    const buildSlugAliases = (value: string): string[] => {
-      const normalizedValue = fallbackSlug(value);
-      const aliases = new Set<string>([normalizedValue]);
-      const trimmedTokens = normalizedValue
-        .split("-")
-        .filter(Boolean)
-        .filter((token) => !PRODUCT_SLUG_STOP_WORDS.has(token));
-
-      if (trimmedTokens.length) {
-        aliases.add(trimmedTokens.join("-"));
-      }
-
-      return Array.from(aliases).filter(Boolean);
-    };
-
-    const findMatchedProduct = (
-      products: WCProduct[],
-      requestedSlug: string,
-    ): WCProduct | null => {
-      const aliases = new Set(buildSlugAliases(requestedSlug));
-      const exactMatchers = [
-        (product: WCProduct) => {
-          const permalinkSlug = extractProductSlugFromPermalink(product.permalink);
-          return permalinkSlug ? aliases.has(permalinkSlug) : false;
-        },
-        (product: WCProduct) => aliases.has(fallbackSlug(product.slug)),
-        (product: WCProduct) => aliases.has(fallbackSlug(product.name)),
-      ];
-
-      for (const matcher of exactMatchers) {
-        const parentMatch =
-          products.find(
-            (product) => product.parent_id === 0 && product.type !== "variation" && matcher(product),
-          ) ?? null;
-
-        if (parentMatch) {
-          return parentMatch;
-        }
-
-        const anyMatch = products.find((product) => matcher(product)) ?? null;
-        if (anyMatch) {
-          return anyMatch;
-        }
-      }
-
-      return null;
-    };
-
-    const products = await getProducts({ slug: normalizedSlug, per_page: 10 });
+    const directMatches = await getProducts({ slug: normalizedSlug, per_page: 10 });
     const directMatch = await hydrateMatchedProduct(
-      findMatchedProduct(products, normalizedSlug),
+      findMatchedProduct(directMatches, normalizedSlug),
     );
 
     if (directMatch) {
@@ -729,25 +755,18 @@ export async function getProductBySlug(slug: string): Promise<WCProduct | null> 
 
 export async function getProductVariations(
   productId: number,
-  productPermalink?: string,
+  _productPermalink?: string,
 ): Promise<WCProduct[]> {
   try {
-    const [variations, legacyVariationGalleryMap] = await Promise.all([
-      wcFetch<WCProduct[]>(`/products/${productId}/variations`, {
-        per_page: 100,
-        orderby: "menu_order",
-        order: "asc",
-      }),
-      getLegacyVariationGalleryMap(productPermalink),
-    ]);
+    void _productPermalink;
+    const variations = await storeFetchCollection<StoreProduct>("/products", {
+      parent: productId,
+      per_page: 100,
+    });
 
-    return variations.map((variation) => ({
-      ...variation,
-      images: buildVariationImagesFromLegacyGallery(
-        variation,
-        legacyVariationGalleryMap[String(variation.id)],
-      ),
-    }));
+    return variations
+      .map(mapStoreProduct)
+      .filter((variation) => variation.parent_id === productId);
   } catch (error) {
     console.error("Error fetching product variations:", error);
     return [];
@@ -755,11 +774,16 @@ export async function getProductVariations(
 }
 
 export async function getCategories(): Promise<WCCategory[]> {
-  return wcFetch<WCCategory[]>("/products/categories", {
-    per_page: 100,
-    hide_empty: true,
-    _fields: "id,name,slug,description,count,image",
-  });
+  const categories = await storeFetchCollection<StoreCategory>(
+    "/products/categories",
+    {
+      per_page: 100,
+    },
+  );
+
+  return categories
+    .filter((category) => (category.count ?? 0) > 0)
+    .map(mapStoreCategory);
 }
 
 export async function getProductReviews(params: {
@@ -768,17 +792,13 @@ export async function getProductReviews(params: {
   page?: number;
 } = {}): Promise<WCReview[]> {
   try {
-    const fetchParams: Record<string, string | number | boolean> = {
+    const reviews = await storeFetch<StoreReview[]>("/products/reviews", {
       per_page: params.per_page || 10,
       page: params.page || 1,
-      status: "approved",
-    };
+      product_id: params.product || "",
+    });
 
-    if (params.product) {
-      fetchParams.product = params.product;
-    }
-
-    return await wcFetch<WCReview[]>("/products/reviews", fetchParams);
+    return Array.isArray(reviews) ? reviews.map(mapStoreReview) : [];
   } catch (error) {
     console.error("Error fetching product reviews:", error);
     return [];
@@ -789,23 +809,21 @@ export async function getVariationProducts(options: {
   categorySlug?: string;
   search?: string;
 } = {}): Promise<WCProduct[]> {
-  let products = await getProducts({
+  const storeProducts = await storeFetchCollection<StoreProduct>("/products", {
+    type: "variation",
     per_page: 100,
-    search: options.search,
-    fields: CATALOG_PRODUCT_FIELDS,
+    search: options.search || "",
   });
 
-  if (!products.length) {
-    return [];
-  }
+  let products = storeProducts.map(mapStoreProduct);
 
   if (options.categorySlug) {
     products = products.filter((product) =>
-      product.categories?.some((category) => category.slug === options.categorySlug),
+      product.categories.some((category) => category.slug === options.categorySlug),
     );
   }
 
-  return products.map((product) => toCatalogProduct(product));
+  return products;
 }
 
 export async function getParentProducts(options: {
@@ -813,27 +831,13 @@ export async function getParentProducts(options: {
   categorySlug?: string;
   search?: string;
 } = {}): Promise<WCProduct[]> {
-  let parentProducts = await getProducts({
-    per_page: options.per_page ?? 100,
-    type: "variable",
+  const variationProducts = await getVariationProducts({
+    categorySlug: options.categorySlug,
     search: options.search,
-    orderby: "menu_order",
-    order: "asc",
   });
 
-  parentProducts = parentProducts.filter((product) => product.parent_id === 0);
-
-  if (!parentProducts.length) {
-    parentProducts = await getParentProductsFromVariations(options.search);
-  }
-
-  if (options.categorySlug) {
-    parentProducts = parentProducts.filter((product) =>
-      product.categories.some((category) => category.slug === options.categorySlug)
-    );
-  }
-
-  return parentProducts;
+  const parentIds = dedupeParentIds(variationProducts).slice(0, options.per_page ?? 100);
+  return getProductsByIds(parentIds);
 }
 
 export async function getProductsByIds(ids: number[]): Promise<WCProduct[]> {
@@ -841,19 +845,23 @@ export async function getProductsByIds(ids: number[]): Promise<WCProduct[]> {
     return [];
   }
 
-  const products = await getProducts({ include: ids, per_page: ids.length });
+  const settledProducts = await Promise.all(ids.map((id) => getProductById(id)));
 
   return ids
-    .map((id) => products.find((product) => product.id === id))
-    .filter((product): product is WCProduct => Boolean(product))
-    .map((product) => toCatalogProduct(product));
+    .map((id) => settledProducts.find((product) => product?.id === id) ?? null)
+    .filter((product): product is WCProduct => Boolean(product));
 }
 
 export async function getRelatedProducts(product: WCProduct): Promise<WCProduct[]> {
   const variationProducts = await getVariationProducts();
 
   return variationProducts
-    .filter((candidate) => candidate.parent_id !== product.id && candidate.id !== product.id)
+    .filter(
+      (candidate) =>
+        candidate.parent_id !== product.id &&
+        candidate.id !== product.id &&
+        candidate.parent_id !== product.parent_id,
+    )
     .filter((candidate) =>
       candidate.categories.some((category) =>
         product.categories.some((productCategory) => productCategory.id === category.id),
@@ -883,20 +891,18 @@ export function getRelativeProductLink(product: WCProduct, parentSlug?: string):
   if (product.permalink) {
     try {
       const url = new URL(product.permalink);
-      // Extract pathname and search for relative URL
       return `${url.pathname}${url.search}`;
     } catch {
-      // Ignore invalid URL and use the fallback below.
+      // Ignore invalid URLs and use the fallback below.
     }
   }
 
-  // For variations, we need the parent slug
-  // Try to extract parent slug from permalink or use provided one
   const slug =
     extractProductSlugFromPermalink(product.permalink) ??
     parentSlug ??
     product.slug;
   const colorValue = getVariationQueryValue(product);
+
   return colorValue ? `/product/${slug}?attribute_pa_color=${colorValue}` : `/product/${slug}`;
 }
 
@@ -918,8 +924,8 @@ export interface WCCoupon {
 
 export async function getCouponByCode(code: string): Promise<WCCoupon | null> {
   try {
-    const coupons = await wcFetch<WCCoupon[]>("/coupons", { code });
-    return coupons.length > 0 ? coupons[0] : null;
+    const coupons = await adminFetch<WCCoupon[]>("/coupons", { code }, { revalidate: false });
+    return Array.isArray(coupons) && coupons.length > 0 ? coupons[0] : null;
   } catch (error) {
     console.error("Error fetching coupon by code:", error);
     return null;

@@ -14,13 +14,15 @@ import InstagramFeed from "@/components/InstagramFeed";
 import CustomerReviewsSection from "@/components/CustomerReviewsSection";
 import { CATEGORY_TABS } from "@/lib/catalog";
 import { HOT_SELLER_IDS, HOT_SELLER_HEADING } from "@/config/hot-sellers";
+import type { InstagramPost } from "@/lib/instagram";
+import { getInstagramFeed } from "@/lib/instagram";
 import {
   getRelativeProductLink,
   getVariationProducts,
   getProductsByIds,
   getProductReviews,
-  type WCProduct,
   type WCReview,
+  type WCProduct,
 } from "@/lib/woocommerce";
 
 // Custom Premium SVG Icons
@@ -108,21 +110,26 @@ export default async function LegacyHomePage() {
   let products: WCProduct[] = [];
   let reviews: WCReview[] = [];
   let showcaseProducts: WCProduct[] = [];
+  let instagramPosts: InstagramPost[] = [];
   
   try {
-    const [productsResult, reviewsResult, showcaseResult] = await Promise.allSettled([
+    const [productsResult, reviewsResult, showcaseResult, instagramResult] = await Promise.allSettled([
       getVariationProducts(),
       getProductReviews({ per_page: 5 }),
       getProductsByIds(HOT_SELLER_IDS),
+      getInstagramFeed(),
     ]);
 
     products = productsResult.status === "fulfilled" ? productsResult.value : [];
     reviews = reviewsResult.status === "fulfilled" ? reviewsResult.value : [];
     showcaseProducts = showcaseResult.status === "fulfilled" ? showcaseResult.value : [];
+    instagramPosts = instagramResult.status === "fulfilled" ? instagramResult.value : [];
     
     // Log for debugging
     if (process.env.NODE_ENV !== "production") {
-      console.log(`[HomePage] Loaded ${products.length} products, ${reviews.length} reviews, ${showcaseProducts.length} hot sellers`);
+      console.log(
+        `[HomePage] Loaded ${products.length} products, ${reviews.length} reviews, ${showcaseProducts.length} hot sellers, ${instagramPosts.length} instagram posts`,
+      );
     }
   } catch (error) {
     console.error("[HomePage] Error loading data:", error);
@@ -274,7 +281,7 @@ export default async function LegacyHomePage() {
         </section>
       )}
 
-      <InstagramFeed />
+      <InstagramFeed initialPosts={instagramPosts} />
 
       {/* Policies Section */}
       <section className="py-16 lg:py-20 border-t border-gray-100 bg-white">

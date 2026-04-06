@@ -1,12 +1,12 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import Image from "next/image";
 import { Star } from "lucide-react";
 import { WCReview } from "@/lib/woocommerce";
 import DOMPurify from "isomorphic-dompurify";
 
-// 1. CHANGE THIS URL to update the review image
-const REVIEW_EDITORIAL_IMAGE = "https://veloriavault.com/wp-content/uploads/2026/01/Bag-3-5-scaled.jpg";
+const REVIEW_EDITORIAL_FALLBACK = "/wp-content/uploads/2026/01/Bag-3-5-scaled.jpg";
 
 // Star Rating Component
 function StarRating({ rating }: { rating: number }) {
@@ -33,9 +33,16 @@ export default function CustomerReviewsSection({ reviews = [] }: { reviews?: WCR
   const displayReviews = reviews.length > 0 ? reviews : [
     {
       id: 0,
+      date_created: "",
+      date_created_gmt: "",
+      product_id: 0,
+      status: "approved",
       reviewer: "Veloria Customer",
+      reviewer_email: "",
       rating: 5,
       review: "Luxurious quality and exceptional craftsmanship. Experience the vault.",
+      verified: false,
+      reviewer_avatar_urls: {},
     }
   ];
 
@@ -51,6 +58,13 @@ export default function CustomerReviewsSection({ reviews = [] }: { reviews?: WCR
   }, [displayReviews.length]);
 
   const currentReview = displayReviews[currentIndex];
+  const editorialImage =
+    currentReview.product_image?.src ||
+    REVIEW_EDITORIAL_FALLBACK;
+  const editorialAlt =
+    currentReview.product_name
+      ? `${currentReview.product_name} customer review`
+      : "Veloria Vault customer review editorial";
 
   return (
     <section className="py-16 lg:py-24 bg-white">
@@ -98,13 +112,13 @@ export default function CustomerReviewsSection({ reviews = [] }: { reviews?: WCR
           </div>
           <div className="order-1 lg:order-2">
             <div className="relative aspect-[4/5] rounded-lg overflow-hidden">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                key={REVIEW_EDITORIAL_IMAGE}
-                src={REVIEW_EDITORIAL_IMAGE}
-                alt={`Veloria Vault customer review editorial`}
-                className="w-full h-full object-cover transition-opacity duration-500"
-                loading="lazy"
+              <Image
+                key={editorialImage}
+                src={editorialImage}
+                alt={editorialAlt}
+                fill
+                sizes="(min-width: 1024px) 40vw, 100vw"
+                className="object-cover transition-opacity duration-500"
               />
             </div>
           </div>

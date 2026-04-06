@@ -1,5 +1,4 @@
 import { MetadataRoute } from "next";
-import { getParentProducts, getCategories } from "@/lib/woocommerce";
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://veloriavault.com";

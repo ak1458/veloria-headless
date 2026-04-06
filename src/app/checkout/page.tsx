@@ -2,7 +2,7 @@
 
 import { useState, useRef } from "react";
 import Link from "next/link";
-import { Check, ArrowRight, CreditCard, ShoppingBag, Loader2, Shield } from "lucide-react";
+import { Check, ArrowRight, CreditCard, ShoppingBag, Loader2 } from "lucide-react";
 import { motion } from "framer-motion";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
