@@ -122,7 +122,7 @@ export default function PremiumHeader() {
   return (
     <>
       {/* Top Announcement Bar */}
-      <div className="bg-black text-white text-[11px] tracking-[0.2em] py-2.5 text-center font-medium uppercase">
+      <div className="bg-black px-4 py-2 text-center text-[10px] font-medium uppercase tracking-[0.12em] text-white sm:text-[11px] sm:tracking-[0.2em]">
         Buy 1 get 15% off and Buy 2 get 20% off + 5% prepaid off
       </div>
 
@@ -234,7 +234,7 @@ export default function PremiumHeader() {
         {/* Mobile Header - Logo shifted right for better centering */}
         <div className="lg:hidden">
           <div className="container mx-auto px-4 py-3">
-            <div className="flex items-center justify-between">
+            <div className="grid grid-cols-[44px_1fr_72px] items-center gap-2">
               {/* Mobile Menu Button */}
               <button
                 onClick={toggleMobileMenu}
@@ -245,8 +245,7 @@ export default function PremiumHeader() {
                 {mobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
               </button>
 
-              {/* Logo - Shifted right with padding for visual centering */}
-              <Link href="/" className="block pl-4">
+              <Link href="/" className="flex justify-center">
                 <Image
                   src={MOBILE_LOGO}
                   alt="Veloria Vault"
@@ -258,7 +257,7 @@ export default function PremiumHeader() {
               </Link>
 
               {/* Cart Icons */}
-              <div className="flex items-center space-x-1">
+              <div className="flex items-center justify-end space-x-1">
                 <Link
                   href="/wishlist"
                   className="p-2 text-gray-800 hover:text-black transition-colors relative"

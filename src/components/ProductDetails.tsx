@@ -614,10 +614,10 @@ export default function ProductDetails({
           </div>
 
           <div className="min-w-0 lg:sticky lg:top-28 lg:self-start">
-            <div className="mb-7 flex items-start justify-between gap-4">
+            <div className="mb-7 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
               <nav
                 aria-label="Breadcrumb"
-                className="flex flex-wrap items-center gap-2 text-[14px] text-[#8e8578]"
+                className="flex flex-wrap items-center gap-2 text-[12px] text-[#8e8578] sm:text-[14px]"
               >
                 <Link href="/" className="transition hover:text-[#211a12]">
                   Home
@@ -650,7 +650,7 @@ export default function ProductDetails({
               </div>
             </div>
 
-            <h1 className="font-serif text-[2.25rem] leading-none text-[#1f1a13] sm:text-[2.6rem] lg:text-[3.35rem]">
+            <h1 className="font-serif text-[1.95rem] leading-none text-[#1f1a13] sm:text-[2.6rem] lg:text-[3.35rem]">
               {product.name}
             </h1>
 
@@ -672,7 +672,7 @@ export default function ProductDetails({
               </div>
             )}
 
-            <div className="mt-5 text-[2rem] font-medium leading-none text-[#bc9a54] sm:text-[2.2rem] lg:text-[2.45rem]">
+            <div className="mt-5 text-[1.75rem] font-medium leading-none text-[#bc9a54] sm:text-[2.2rem] lg:text-[2.45rem]">
               ₹{formatPrice(price)}
             </div>
 
@@ -774,7 +774,7 @@ export default function ProductDetails({
             </div>
 
             <div className="mt-6 flex flex-col gap-4 sm:flex-row sm:items-stretch">
-              <div className="flex h-[52px] w-[132px] items-center border border-[#ded5c9] bg-white">
+              <div className="flex h-[52px] w-full max-w-[180px] items-center border border-[#ded5c9] bg-white sm:w-[132px]">
                 <button
                   type="button"
                   onClick={() => setQuantity((current) => Math.max(1, current - 1))}
@@ -802,7 +802,7 @@ export default function ProductDetails({
                 type="button"
                 onClick={handleAddToCart}
                 disabled={!isInStock}
-                className="h-[52px] min-w-[190px] bg-[#b89a57] px-8 text-[14px] font-medium uppercase tracking-[0.02em] text-white transition hover:bg-[#a98a48] disabled:cursor-not-allowed disabled:bg-[#d7c69f]"
+                className="h-[52px] w-full bg-[#b89a57] px-8 text-[14px] font-medium uppercase tracking-[0.02em] text-white transition hover:bg-[#a98a48] disabled:cursor-not-allowed disabled:bg-[#d7c69f] sm:min-w-[190px] sm:w-auto"
               >
                 Add to cart
               </button>

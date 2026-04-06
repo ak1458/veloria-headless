@@ -99,7 +99,7 @@ export default function PremiumHero() {
   return (
     <section
       ref={containerRef}
-      className="relative w-full h-[70vh] md:h-[80vh] lg:h-[85vh] flex items-start lg:items-center pt-50 lg:pt-0 overflow-hidden bg-[#1a1a1a]"
+      className="relative flex min-h-[76svh] w-full items-end overflow-hidden bg-[#1a1a1a] px-0 pb-24 pt-24 sm:min-h-[80vh] sm:pb-28 sm:pt-28 lg:h-[85vh] lg:items-center lg:pb-0 lg:pt-0"
       onMouseEnter={() => setIsAutoPlaying(false)}
       onMouseLeave={() => setIsAutoPlaying(true)}
     >
@@ -126,7 +126,7 @@ export default function PremiumHero() {
             }}
           >
             {/* Dark overlay */}
-            <div className="absolute inset-0 bg-black/30" />
+            <div className="absolute inset-0 bg-black/40 lg:bg-black/30" />
           </motion.div>
         ))}
       </div>
@@ -152,7 +152,7 @@ export default function PremiumHero() {
       </div>
 
       {/* Slide Indicators/Dots */}
-      <div className="absolute bottom-8 left-1/2 -translate-x-1/2 z-20 flex items-center space-x-3">
+      <div className="absolute bottom-6 left-1/2 z-20 flex -translate-x-1/2 items-center space-x-3 sm:bottom-8">
         {HERO_SLIDES.map((_, index) => (
           <button
             key={index}
@@ -184,11 +184,11 @@ export default function PremiumHero() {
       </div>
 
       {/* Content */}
-      <div className="container mx-auto px-4 relative z-10">
-        <div className="max-w-xl text-white lg:text-left text-left mx-20 lg:mx-0">
+      <div className="container relative z-10 mx-auto px-5 sm:px-6 lg:px-8">
+        <div className="mx-0 max-w-[20rem] text-left text-white sm:max-w-xl lg:max-w-2xl">
           <h1
             ref={titleRef}
-            className="text-3xl md:text-5xl lg:text-7xl font-serif leading-[1.1] mb-3 lg:mb-6 tracking-tight"
+            className="mb-3 font-serif text-[2.35rem] leading-[1.05] tracking-tight sm:text-5xl lg:mb-6 lg:text-7xl"
           >
             <span className="block">LUXURY</span>
             <span className="block italic font-light">locked in leather</span>
@@ -196,7 +196,7 @@ export default function PremiumHero() {
 
           <p
             ref={subtitleRef}
-            className="lg:hidden text-xs text-gray-100 max-w-[260px] mx-auto leading-relaxed font-light"
+            className="max-w-[18rem] text-sm leading-relaxed font-light text-gray-100 sm:max-w-sm sm:text-base lg:hidden"
           >
             Each piece holds more than design. It is a possession. A presence. A promise.
           </p>

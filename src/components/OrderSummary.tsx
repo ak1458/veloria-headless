@@ -72,7 +72,7 @@ export default function OrderSummary({ showCouponSection = true }: OrderSummaryP
       {showCouponSection && (
         <div className="mb-4 p-3 bg-gray-50 rounded-lg">
           <p className="text-xs font-medium text-gray-600 mb-2">Payment Method</p>
-          <div className="flex gap-2">
+          <div className="flex flex-col gap-2 sm:flex-row">
             <button
               onClick={() => setIsPrepaid(true)}
               className={`flex-1 py-2 px-3 text-xs font-medium rounded transition-colors ${

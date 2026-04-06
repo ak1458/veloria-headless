@@ -13,15 +13,15 @@ export default function CartPage() {
   const total = subtotal + shipping;
 
   return (
-    <div className="pt-[100px] min-h-screen bg-[#faf8f5]">
+    <div className="min-h-screen bg-[#faf8f5] pt-[92px] sm:pt-[100px]">
       {/* Header */}
       <div className="bg-white border-b border-gray-100 mb-8">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 flex items-center justify-between">
+        <div className="mx-auto flex max-w-7xl flex-col gap-3 px-4 py-6 sm:px-6 md:flex-row md:items-center md:justify-between lg:px-8">
           <Link href="/shop" className="flex items-center space-x-2 text-gray-500 hover:text-black transition-colors text-sm font-medium">
             <ArrowLeft size={16} />
             <span>Continue Shopping</span>
           </Link>
-          <h1 className="font-serif text-2xl md:text-3xl text-gray-900 tracking-wide">
+          <h1 className="font-serif text-xl text-gray-900 tracking-wide sm:text-2xl md:text-3xl">
             Shopping Cart <span className="text-gray-400 font-sans text-lg">({items.length} items)</span>
           </h1>
           <div className="w-24 hidden md:block" /> {/* Balance */}
@@ -65,9 +65,9 @@ export default function CartPage() {
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, x: -20 }}
-                    className="flex gap-4 bg-white p-5 rounded-xl border border-gray-100 shadow-[0_2px_4px_rgba(0,0,0,0.02)] transition-shadow hover:shadow-[0_4px_12px_rgba(0,0,0,0.05)]"
+                    className="flex flex-col gap-4 rounded-xl border border-gray-100 bg-white p-4 shadow-[0_2px_4px_rgba(0,0,0,0.02)] transition-shadow hover:shadow-[0_4px_12px_rgba(0,0,0,0.05)] sm:flex-row sm:p-5"
                   >
-                    <div className="relative w-28 h-28 bg-gray-50 rounded-lg overflow-hidden flex-shrink-0 border border-gray-50">
+                    <div className="relative aspect-[4/3] w-full overflow-hidden rounded-lg border border-gray-50 bg-gray-50 sm:h-28 sm:w-28 sm:aspect-auto sm:flex-shrink-0">
                       <Image
                         src={item.image || "/placeholder.jpg"}
                         alt={item.name}
@@ -101,7 +101,7 @@ export default function CartPage() {
                         </p>
                       </div>
 
-                      <div className="flex items-center justify-between mt-4">
+                      <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                         <div className="flex items-center border border-gray-200 rounded-lg bg-gray-50 overflow-hidden">
                           <button
                             onClick={() => updateQuantity(item.id, item.quantity - 1)}
@@ -128,7 +128,7 @@ export default function CartPage() {
                 )})}
 
                 {/* Trust Badges */}
-                <div className="grid grid-cols-3 gap-3 pt-4">
+                <div className="grid grid-cols-1 gap-3 pt-4 sm:grid-cols-3">
                   <div className="bg-white p-4 rounded-xl border border-gray-100 flex flex-col items-center text-center">
                     <Truck className="w-5 h-5 text-[#b59a5c] mb-2" />
                     <span className="text-[11px] font-bold text-gray-800">Free Shipping</span>

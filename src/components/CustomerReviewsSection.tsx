@@ -6,7 +6,7 @@ import { Star } from "lucide-react";
 import { WCReview } from "@/lib/woocommerce";
 import DOMPurify from "isomorphic-dompurify";
 
-const REVIEW_EDITORIAL_FALLBACK = "/wp-content/uploads/2026/01/Bag-3-5-scaled.jpg";
+const REVIEW_EDITORIAL_IMAGE = "/wp-content/uploads/2026/01/Bag-3-5-scaled.jpg";
 
 // Star Rating Component
 function StarRating({ rating }: { rating: number }) {
@@ -58,35 +58,26 @@ export default function CustomerReviewsSection({ reviews = [] }: { reviews?: WCR
   }, [displayReviews.length]);
 
   const currentReview = displayReviews[currentIndex];
-  const editorialImage =
-    currentReview.product_image?.src ||
-    REVIEW_EDITORIAL_FALLBACK;
-  const editorialAlt =
-    currentReview.product_name
-      ? `${currentReview.product_name} customer review`
-      : "Veloria Vault customer review editorial";
 
   return (
-    <section className="py-16 lg:py-24 bg-white">
+    <section className="bg-white py-14 sm:py-16 lg:py-24">
       <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-16 items-center">
-          {/* Text Container - Added min-height to prevent jumping of the whole section */}
-          <div className="order-2 lg:order-1 flex flex-col justify-center min-h-[350px]">
+        <div className="grid grid-cols-1 items-center gap-8 lg:grid-cols-2 lg:gap-16">
+          <div className="order-2 flex flex-col justify-center min-h-[260px] sm:min-h-[320px] lg:order-1 lg:min-h-[350px]">
             <p className="text-[11px] font-semibold tracking-[0.2em] text-[#b59a5c] uppercase mb-3">
               What Our Customers Say
             </p>
-            <h2 className="text-3xl lg:text-4xl font-serif font-medium text-gray-900 mb-6 leading-tight">
+            <h2 className="mb-5 font-serif text-[2rem] leading-tight text-gray-900 sm:text-4xl">
               Quiet luxury, built to last.
             </h2>
 
-            {/* Review Content Container - Added min-height to lock height for different text lengths */}
-            <div className="min-h-[160px] md:min-h-[140px] flex flex-col justify-start">
+            <div className="flex min-h-[150px] flex-col justify-start sm:min-h-[170px] lg:min-h-[140px]">
               <blockquote
                 key={currentReview.id}
-                className="text-lg lg:text-xl text-gray-600 italic mb-6 leading-relaxed border-l-4 border-[#b59a5c] pl-6 transition-opacity duration-500"
+                className="mb-5 border-l-4 border-[#b59a5c] pl-4 text-base leading-relaxed text-gray-600 italic transition-opacity duration-500 sm:pl-6 sm:text-lg lg:text-xl"
                 dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(`&ldquo;${currentReview.review}&rdquo;`) }}
               />
-              <div className="flex items-center gap-3">
+              <div className="flex flex-wrap items-center gap-2 sm:gap-3">
                 <p className="text-sm font-medium text-gray-900">
                   {currentReview.reviewer}
                 </p>
@@ -95,8 +86,7 @@ export default function CustomerReviewsSection({ reviews = [] }: { reviews?: WCR
               </div>
             </div>
 
-            {/* Slide indicators */}
-            <div className="flex items-center gap-2 mt-8">
+            <div className="mt-6 flex items-center gap-2 sm:mt-8">
               {displayReviews.map((_, index) => (
                 <button
                   key={index}
@@ -111,11 +101,10 @@ export default function CustomerReviewsSection({ reviews = [] }: { reviews?: WCR
             </div>
           </div>
           <div className="order-1 lg:order-2">
-            <div className="relative aspect-[4/5] rounded-lg overflow-hidden">
+            <div className="relative mx-auto aspect-[4/5] w-full max-w-[420px] overflow-hidden rounded-lg lg:max-w-none">
               <Image
-                key={editorialImage}
-                src={editorialImage}
-                alt={editorialAlt}
+                src={REVIEW_EDITORIAL_IMAGE}
+                alt="Veloria Vault customer review editorial"
                 fill
                 sizes="(min-width: 1024px) 40vw, 100vw"
                 className="object-cover transition-opacity duration-500"

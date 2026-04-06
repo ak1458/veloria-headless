@@ -167,7 +167,7 @@ export default async function LegacyHomePage() {
       {/* Features Section */}
       <section className="py-12 lg:py-16">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-3 gap-2 md:gap-6 lg:gap-12">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3 md:gap-6 lg:gap-12">
             {HOME_FEATURES.map((feature) => {
               const Icon = feature.icon;
               return (
@@ -286,7 +286,7 @@ export default async function LegacyHomePage() {
       {/* Policies Section */}
       <section className="py-16 lg:py-20 border-t border-gray-100 bg-white">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-3 gap-4 md:gap-8 lg:gap-12">
+          <div className="grid grid-cols-1 gap-6 sm:grid-cols-3 md:gap-8 lg:gap-12">
             {POLICY_ITEMS.map((policy) => {
               const Icon = policy.icon;
               return (

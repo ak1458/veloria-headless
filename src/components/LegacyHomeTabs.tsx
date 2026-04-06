@@ -44,7 +44,7 @@ export default function LegacyHomeTabs({ tabs }: LegacyHomeTabsProps) {
     <div className="space-y-6 lg:space-y-8">
       {/* Tab Navigation - Horizontal scrollable, NO arrows on mobile */}
       <div className="overflow-x-auto scrollbar-hide" style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}>
-        <div className="flex items-center justify-start md:justify-center gap-1 md:gap-8 border-b border-gray-200 min-w-max md:min-w-0 px-4 md:px-0">
+        <div className="flex min-w-max items-center justify-start gap-2 border-b border-gray-200 px-2 sm:px-4 md:min-w-0 md:justify-center md:gap-8 md:px-0">
           {tabs.map((tab) => (
             <button
               key={tab.slug}
@@ -111,7 +111,7 @@ export default function LegacyHomeTabs({ tabs }: LegacyHomeTabsProps) {
                 initial={{ opacity: 0, x: 20 }}
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ delay: Math.min(index * 0.02, 0.12), duration: 0.2 }}
-                className="flex-shrink-0 w-[calc(50%-8px)] md:w-[280px] lg:w-[300px] snap-start"
+                className="w-[78vw] max-w-[240px] flex-shrink-0 snap-start sm:w-[280px] lg:w-[300px]"
               >
                 <PremiumProductCard
                   product={product}

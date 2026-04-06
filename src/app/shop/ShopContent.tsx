@@ -115,7 +115,7 @@ function ShopContentInner({
 
   return (
     <div className="min-h-screen bg-white pb-20 lg:pb-0">
-      <div className="relative bg-[#1a1a1a] h-[300px] md:h-[400px] overflow-hidden">
+      <div className="relative h-[220px] overflow-hidden bg-[#1a1a1a] sm:h-[280px] md:h-[400px]">
         {/* Background Image - Using img tag for better object-fit control */}
         <div className="absolute inset-0">
           <img
@@ -133,9 +133,10 @@ function ShopContentInner({
         </div>
       </div>
 
-      <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-12">
+      <div className="container mx-auto px-4 py-10 sm:px-6 lg:px-8 lg:py-12">
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6 mb-10">
-          <div className="flex flex-wrap gap-2">
+          <div className="-mx-4 overflow-x-auto px-4 sm:mx-0 sm:px-0">
+            <div className="flex min-w-max gap-2">
             <button
               onClick={() => handleCategoryClick(null)}
               className={`px-4 py-2 text-xs font-medium tracking-wider uppercase transition-all duration-200 border ${
@@ -155,10 +156,11 @@ function ShopContentInner({
                     ? "bg-black text-white border-black"
                     : "bg-white text-gray-700 border-gray-200 hover:border-black"
                 }`}
-              >
-                {getCategoryLabel(category.slug)}
-              </button>
+                >
+                  {getCategoryLabel(category.slug)}
+                </button>
             ))}
+            </div>
           </div>
 
           <form onSubmit={handleSearch} className="flex w-full md:w-auto">
@@ -193,7 +195,7 @@ function ShopContentInner({
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ duration: 0.2 }}
-            className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6"
+            className="grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-3 md:gap-6 lg:grid-cols-4"
           >
             <AnimatePresence>
               {products.map((product, index) => (

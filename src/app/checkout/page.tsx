@@ -193,7 +193,7 @@ export default function CheckoutPage() {
   if (items.length === 0 && !placedOrder && !pendingOrder) {
     return (
       <>
-        <div className="pt-24 min-h-screen bg-[#faf8f5] flex flex-col items-center justify-center p-4">
+        <div className="flex min-h-screen flex-col items-center justify-center bg-[#faf8f5] p-4 pt-20 sm:pt-24">
           <div className="bg-white p-8 rounded-xl shadow-sm border border-gray-100 max-w-sm w-full text-center">
             <ShoppingBag className="w-12 h-12 text-gray-300 mx-auto mb-4" />
             <p className="font-serif text-lg mb-4 text-gray-800">Your cart is empty</p>
@@ -211,7 +211,7 @@ export default function CheckoutPage() {
   if (pendingOrder) {
     return (
       <>
-        <div className="pt-24 min-h-screen bg-[#faf8f5] pb-16">
+        <div className="min-h-screen bg-[#faf8f5] pb-16 pt-20 sm:pt-24">
           <div className="max-w-xl mx-auto px-4 sm:px-6 lg:px-8">
           <motion.div 
             initial={{ opacity: 0, y: 20 }} 
@@ -272,7 +272,7 @@ export default function CheckoutPage() {
 
   if (placedOrder) {
     return (
-      <div className="pt-32 min-h-screen bg-[#faf8f5] flex flex-col items-center justify-center p-4">
+      <div className="flex min-h-screen flex-col items-center justify-center bg-[#faf8f5] p-4 pt-24 sm:pt-32">
         <motion.div 
           initial={{ opacity: 0, scale: 0.9 }} 
           animate={{ opacity: 1, scale: 1 }} 
@@ -308,7 +308,7 @@ export default function CheckoutPage() {
   }
 
   return (
-    <div className="pt-24 min-h-screen bg-[#faf8f5] pb-16">
+    <div className="min-h-screen bg-[#faf8f5] pb-16 pt-20 sm:pt-24">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-start">
           
@@ -316,7 +316,7 @@ export default function CheckoutPage() {
           <div className="lg:col-span-7 bg-white p-6 md:p-8 rounded-xl border border-gray-100 shadow-sm">
             
             {/* Stepper Header */}
-            <div className="flex items-center justify-between mb-8 border-b border-gray-100 pb-4">
+            <div className="mb-8 flex flex-wrap items-center gap-3 border-b border-gray-100 pb-4 sm:justify-between">
               {steps.map((s, idx) => (
                 <div key={s.id} className="flex items-center space-x-2">
                   <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${
@@ -352,7 +352,7 @@ export default function CheckoutPage() {
                     {errors.email && <p className="text-xs text-red-500 mt-1">{errors.email.message}</p>}
                   </div>
                   
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                     <div>
                       <label className="block text-xs font-bold text-gray-500 uppercase mb-1">First Name *</label>
                       <input 
@@ -386,7 +386,7 @@ export default function CheckoutPage() {
                     {errors.address && <p className="text-xs text-red-500 mt-1">{errors.address.message}</p>}
                   </div>
 
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                     <div>
                       <label className="block text-xs font-bold text-gray-500 uppercase mb-1">City *</label>
                       <input 
@@ -409,7 +409,7 @@ export default function CheckoutPage() {
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                     <div>
                       <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Postal Code *</label>
                       <input 
@@ -439,7 +439,7 @@ export default function CheckoutPage() {
                   <h3 className="font-serif text-lg text-gray-800 mb-2">Payment Method</h3>
                   
                   <div className="space-y-3">
-                    <label className={`border-2 p-4 rounded-xl flex items-center justify-between cursor-pointer transition-all ${
+                    <label className={`flex cursor-pointer flex-col gap-3 rounded-xl border-2 p-4 transition-all sm:flex-row sm:items-center sm:justify-between ${
                       isPrepaid === true ? "border-[#b59a5c] bg-[#b59a5c]/5" : "border-gray-200 hover:border-gray-300"
                     }`}>
                       <div className="flex items-center space-x-3">
@@ -460,7 +460,7 @@ export default function CheckoutPage() {
                       <span className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded">+5% off</span>
                     </label>
 
-                    <label className={`border-2 p-4 rounded-xl flex items-center justify-between cursor-pointer transition-all ${
+                    <label className={`flex cursor-pointer flex-col gap-3 rounded-xl border-2 p-4 transition-all sm:flex-row sm:items-center sm:justify-between ${
                       isPrepaid === false ? "border-[#b59a5c] bg-[#b59a5c]/5" : "border-gray-200 hover:border-gray-300"
                     }`}>
                       <div className="flex items-center space-x-3">
@@ -481,15 +481,16 @@ export default function CheckoutPage() {
 
                   {/* Order Summary for Mobile */}
                   <div className="lg:hidden mt-6">
+                    <CouponSection />
                     <OrderSummary showCouponSection={false} />
                   </div>
                 </div>
               )}
 
               {/* Form Buttons */}
-              <div className="flex items-center justify-between pt-6 border-t border-gray-100 mt-8">
+              <div className="mt-8 flex flex-col-reverse gap-3 border-t border-gray-100 pt-6 sm:flex-row sm:items-center sm:justify-between">
                 {currentStep > 1 ? (
-                  <button type="button" onClick={handlePrevStep} className="text-sm text-gray-500 font-medium hover:text-black">
+                  <button type="button" onClick={handlePrevStep} className="text-sm text-gray-500 font-medium hover:text-black sm:text-left">
                     Back
                   </button>
                 ) : <div />}
@@ -498,7 +499,7 @@ export default function CheckoutPage() {
                   <button 
                     type="button"
                     onClick={handleNextStep}
-                    className="flex items-center space-x-2 bg-[#1a1a1a] text-white px-6 py-3 rounded text-xs font-bold uppercase tracking-widest hover:bg-[#b59a5c] transition-colors"
+                    className="flex w-full items-center justify-center space-x-2 rounded bg-[#1a1a1a] px-6 py-3 text-xs font-bold uppercase tracking-widest text-white transition-colors hover:bg-[#b59a5c] sm:w-auto"
                   >
                     <span>Continue</span>
                     <ArrowRight size={14} />
@@ -507,7 +508,7 @@ export default function CheckoutPage() {
                   <button 
                     type="submit"
                     disabled={isSubmitting || isPrepaid === null}
-                    className="flex items-center space-x-2 bg-[#1a1a1a] text-white px-6 py-3 rounded text-xs font-bold uppercase tracking-widest hover:bg-[#b59a5c] transition-colors disabled:opacity-50"
+                    className="flex w-full items-center justify-center space-x-2 rounded bg-[#1a1a1a] px-6 py-3 text-center text-xs font-bold uppercase tracking-widest text-white transition-colors hover:bg-[#b59a5c] disabled:opacity-50 sm:w-auto"
                   >
                     {isSubmitting ? (
                       <>

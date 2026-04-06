@@ -23,12 +23,14 @@
 
 html {
   scroll-behavior: smooth;
+  max-width: 100%;
 }
 
 body {
   margin: 0;
   padding: 0;
   overflow-x: hidden;
+  max-width: 100%;
   background: #faf8f5;
   font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
@@ -160,6 +162,7 @@ input:focus-visible {
 .prose {
   color: var(--color-gray-800) !important;
   line-height: 1.8 !important;
+  overflow-wrap: anywhere;
 }
 
 .prose p {
@@ -203,5 +206,19 @@ input:focus-visible {
 
 .prose-lg {
   font-size: 1.05rem !important;
+}
+
+.prose img,
+.prose iframe,
+.prose table {
+  max-width: 100% !important;
+}
+
+@media (max-width: 767px) {
+  input,
+  select,
+  textarea {
+    font-size: 16px !important;
+  }
 }
 

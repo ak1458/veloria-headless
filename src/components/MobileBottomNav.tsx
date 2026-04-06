@@ -42,7 +42,7 @@ function MobileBottomNavInner() {
       badge: totalItems > 0 ? totalItems : null
     },
     { 
-      href: "/my-account", 
+      href: "/account", 
       label: "Account", 
       icon: User,
       badge: null
