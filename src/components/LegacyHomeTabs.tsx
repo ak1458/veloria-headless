@@ -11,6 +11,7 @@ interface LegacyHomeTab {
   slug: string;
   label: string;
   products: WCProduct[];
+  viewAllHref?: string;
 }
 
 interface LegacyHomeTabsProps {
@@ -28,7 +29,7 @@ export default function LegacyHomeTabs({ tabs }: LegacyHomeTabsProps) {
 
   const visibleProducts = activeTab.products.slice(0, 12);
   const viewAllHref =
-    activeTab.slug === "tote-bag" ? "/shop" : `/product-category/${activeTab.slug}`;
+    activeTab.viewAllHref || `/product-category/${activeTab.slug}`;
 
   const scroll = (direction: "left" | "right") => {
     if (scrollContainerRef.current) {

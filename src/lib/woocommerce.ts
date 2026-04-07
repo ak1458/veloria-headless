@@ -85,6 +85,21 @@ export interface WCReview {
   reviewer_avatar_urls: {
     [key: string]: string;
   };
+  reviewer_display_name?: string;
+  date_label?: string;
+  media_count?: number;
+  media?: WCReviewMedia[];
+}
+
+export interface WCReviewMedia {
+  id: string;
+  reviewId: number;
+  type: "image" | "video";
+  url: string;
+  thumbnail: string;
+  alt: string;
+  reviewer?: string;
+  createdAt?: string;
 }
 
 interface WCFetchOptions {

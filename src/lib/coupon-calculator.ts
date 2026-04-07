@@ -50,9 +50,17 @@ function getCouponValidationError(
     return "This coupon is not active";
   }
 
+  if (coupon.startDate) {
+    const start = new Date(coupon.startDate);
+    if (!Number.isNaN(start.getTime()) && start.getTime() > Date.now()) {
+      return "This coupon is not yet active";
+    }
+  }
+
   if (coupon.expiryDate) {
     const expiry = new Date(coupon.expiryDate);
-    if (!Number.isNaN(expiry.getTime()) && expiry.getTime() < Date.now()) {
+    // Add 1 day to expiry date so it's valid throughout the entire expiry date
+    if (!Number.isNaN(expiry.getTime()) && expiry.getTime() + 86400000 < Date.now()) {
       return "This coupon has expired";
     }
   }

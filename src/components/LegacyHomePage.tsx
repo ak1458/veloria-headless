@@ -12,8 +12,8 @@ import PremiumHero from "@/components/PremiumHero";
 import HomeProductCard from "@/components/HomeProductCard";
 import InstagramFeed from "@/components/InstagramFeed";
 import CustomerReviewsSection from "@/components/CustomerReviewsSection";
-import { CATEGORY_TABS } from "@/lib/catalog";
-import { HOT_SELLER_IDS, HOT_SELLER_HEADING } from "@/config/hot-sellers";
+import { MOST_LOVED_STYLES } from "@/config/most-loved";
+import { HOT_SELLER_IDS, HOT_SELLER_HEADING, HOT_SELLER_SECTION } from "@/config/hot-sellers";
 import type { InstagramPost } from "@/lib/instagram";
 import { getInstagramFeed } from "@/lib/instagram";
 import {
@@ -135,12 +135,43 @@ export default async function LegacyHomePage() {
     console.error("[HomePage] Error loading data:", error);
   }
 
-  const tabs = CATEGORY_TABS.map((tab) => ({
-    ...tab,
-    products: products.filter((product) =>
-      product.categories.some((category) => category.slug === tab.slug),
-    ).slice(0, 12),
-  })).filter((tab) => tab.products.length > 0);
+  const tabs = MOST_LOVED_STYLES.tabs.map((tab) => {
+    let tabProducts = products.filter((product) =>
+      product.categories.some((category) => category.slug === tab.categorySlug),
+    );
+
+    // Filter by allowed colors if specified
+    if (tab.allowedColors.length > 0) {
+      tabProducts = tabProducts.filter((product) => {
+        const colorAttr = product.attributes.find(
+          (attr) =>
+            attr.slug === "pa_color" ||
+            attr.name.toLowerCase().includes("color"),
+        );
+        if (!colorAttr) return true;
+        const productColor = (colorAttr.option || "").toLowerCase();
+        return tab.allowedColors.some((c) => productColor.includes(c.toLowerCase()));
+      });
+    }
+
+    // Prioritize explicit product IDs
+    if (tab.productIds.length > 0) {
+      const prioritized = tab.productIds
+        .map((id) => tabProducts.find((p) => p.id === id))
+        .filter((p): p is WCProduct => Boolean(p));
+      const remaining = tabProducts.filter(
+        (p) => !tab.productIds.includes(p.id),
+      );
+      tabProducts = [...prioritized, ...remaining];
+    }
+
+    return {
+      slug: tab.slug,
+      label: tab.label,
+      viewAllHref: tab.viewAllHref,
+      products: tabProducts.slice(0, tab.maxItems),
+    };
+  }).filter((tab) => tab.products.length > 0);
 
   const donnaSpotlight =
     findProduct(products, ["donna", "chocolate brown"]) ||
@@ -233,7 +264,7 @@ export default async function LegacyHomePage() {
       </section>
 
       {/* Hot Seller Section */}
-      <section className="py-16 lg:py-24 bg-white">
+      <section id={HOT_SELLER_SECTION.id} className="py-16 lg:py-24 bg-white">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-12">
             <p className="text-[11px] font-semibold tracking-[0.2em] text-[#b59a5c] uppercase mb-3">
@@ -264,16 +295,16 @@ export default async function LegacyHomePage() {
         </div>
       </section>
 
-      {/* Most Loved Styles Section - Only show if we have tabs with products */}
+      {/* Most Loved Styles Section */}
       {tabs.length > 0 && (
-        <section className="py-16 lg:py-24">
+        <section id={MOST_LOVED_STYLES.sectionId} className="py-16 lg:py-24">
           <div className="container mx-auto px-4 sm:px-6 lg:px-8">
             <div className="text-center mb-12">
-              <p className="text-[11px] font-semibold tracking-[0.2em] text-[#b59a5c] uppercase mb-3">
-                Most Loved Styles
+              <p className="text-[11px] font-semibold tracking-[0.2em] uppercase mb-3" style={{ color: MOST_LOVED_STYLES.labelColor }}>
+                {MOST_LOVED_STYLES.eyebrow}
               </p>
               <h2 className="text-2xl lg:text-3xl font-serif font-medium text-gray-900">
-                Choose the silhouette that fits her rhythm.
+                {MOST_LOVED_STYLES.title}
               </h2>
             </div>
             <LegacyHomeTabs tabs={tabs} />

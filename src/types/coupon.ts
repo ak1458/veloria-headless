@@ -12,7 +12,8 @@ export interface Coupon {
   maxDiscount?: number;
   usageLimit?: number;
   usageCount: number;
-  expiryDate?: string;
+  startDate?: string; // Optional start date (ISO string like "2026-05-01")
+  expiryDate?: string; // Optional end date (ISO string like "2026-06-30")
   isActive: boolean;
   excludeSaleItems?: boolean;
   productIds?: number[];

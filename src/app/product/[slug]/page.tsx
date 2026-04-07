@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import ProductDetails from "@/components/ProductDetails";
 import { getProductBySlug, getProductVariations } from "@/lib/woocommerce";
+import { getProductReviewBundle } from "@/lib/reviews";
 
 export const dynamic = 'force-dynamic';
 
@@ -54,11 +55,18 @@ export default async function ProductPage({
     notFound();
   }
 
-  const variations = await getProductVariations(product.id, product.permalink);
+  const [variations, reviewBundle] = await Promise.all([
+    getProductVariations(product.id, product.permalink),
+    getProductReviewBundle(product),
+  ]);
 
   return (
     <div className="min-h-screen bg-[#fbfaf7] pb-20 lg:pb-0">
-      <ProductDetails product={product} variations={variations} />
+      <ProductDetails
+        product={product}
+        variations={variations}
+        reviewBundle={reviewBundle}
+      />
     </div>
   );
 }

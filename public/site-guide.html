@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Veloria Vault — Site Guide</title>
+  <link rel="stylesheet" href="/site-guide.css" />
+</head>
+<body>
+
+<header>
+  <h1>Veloria Vault — Site Guide</h1>
+  <p>A plain-language reference for editing content, sections, and styling.<br />Use Ctrl+F to search anything.</p>
+</header>
+
+<nav class="toc">
+  <h2>Quick Links</h2>
+  <ul>
+    <li><a href="#hot-sellers-guide">Hot Sellers Section</a></li>
+    <li><a href="#most-loved-guide">Most Loved Styles</a></li>
+    <li><a href="#product-page-guide">Product Page: Offers &amp; Trust</a></li>
+    <li><a href="#reviews-guide">Product Reviews</a></li>
+    <li><a href="#scratch-coupon-guide">Scratch Coupon</a></li>
+    <li><a href="#coupons-guide">Coupons &amp; Discounts</a></li>
+    <li><a href="#hero-guide">Homepage Hero</a></li>
+    <li><a href="#footer-guide">Footer &amp; Header</a></li>
+    <li><a href="#deployment-guide">Deployment</a></li>
+  </ul>
+</nav>
+
+<main>
+
+<!-- ─── HOT SELLERS ─── -->
+<section id="hot-sellers-guide">
+  <h2>🔥 Hot Sellers Section</h2>
+  <p>The Hot Seller grid appears on the homepage at <a href="/#hot-sellers">/#hot-sellers</a>.</p>
+
+  <h3>Where to Edit</h3>
+  <table>
+    <tr><th>What</th><th>File</th></tr>
+    <tr><td>Which bags appear</td><td><code>src/config/hot-sellers.ts</code></td></tr>
+    <tr><td>Section heading &amp; subtitle</td><td><code>src/config/hot-sellers.ts</code></td></tr>
+    <tr><td>Label color</td><td><code>src/config/hot-sellers.ts</code></td></tr>
+  </table>
+
+  <h3>How to Change the Bags</h3>
+  <ol>
+    <li>Go to WooCommerce → Products and find the bag you want.</li>
+    <li>Copy the product <strong>ID</strong> (visible in the URL or the product list).</li>
+    <li>Open <code>src/config/hot-sellers.ts</code> and replace one of the numbers in <code>HOT_SELLER_IDS</code>:</li>
+  </ol>
+  <pre><code>export const HOT_SELLER_IDS: number[] = [
+  3459, // 🛍️ Freya
+  3137, // 🛍️ The Amara
+  3692, // 🛍️ The Vanya Sling
+  3734, // 🛍️ Vivian
+];</code></pre>
+  <p>Keep exactly <strong>4 entries</strong> for the grid to look correct.</p>
+
+  <h3>How to Change Heading Text</h3>
+  <p>In the same file, edit the <code>HOT_SELLER_SECTION</code> object:</p>
+  <pre><code>export const HOT_SELLER_SECTION = {
+  id: "hot-sellers",
+  label: "Hot Seller",            // ← small label above heading
+  title: "Your new heading here", // ← main heading text
+  labelColor: "#b59a5c",          // ← label color (gold)
+};</code></pre>
+</section>
+
+<!-- ─── MOST LOVED ─── -->
+<section id="most-loved-guide">
+  <h2>💕 Most Loved Styles</h2>
+  <p>The tabbed product carousel on the homepage at <a href="/#most-loved-styles">/#most-loved-styles</a>.</p>
+
+  <h3>Where to Edit</h3>
+  <table>
+    <tr><th>What</th><th>File</th></tr>
+    <tr><td>Tab labels, categories, colors, product IDs</td><td><code>src/config/most-loved.ts</code></td></tr>
+    <tr><td>Section heading &amp; subtitle</td><td><code>src/config/most-loved.ts</code></td></tr>
+  </table>
+
+  <h3>How Each Tab Works</h3>
+  <pre><code>{
+  slug: "tote-bag",
+  label: "Tote",                             // Tab button text
+  categorySlug: "tote-bag",                  // WooCommerce category slug
+  allowedColors: ["black", "brown"],         // Only show these colors
+  productIds: [3003, 3459],                  // Show these first (in order)
+  maxItems: 8,                               // Max products in carousel
+  viewAllHref: "/product-category/tote-bag", // "Explore" button link
+},</code></pre>
+
+  <h3>To Add or Remove a Tab</h3>
+  <ol>
+    <li>Open <code>src/config/most-loved.ts</code>.</li>
+    <li>Add a new object to the <code>tabs</code> array or remove one.</li>
+    <li>Each tab must have a unique <code>slug</code>.</li>
+  </ol>
+
+  <h3>To Change Heading</h3>
+  <p>Edit <code>eyebrow</code> (small text above) and <code>title</code> in the config.</p>
+</section>
+
+<!-- ─── PRODUCT PAGE ─── -->
+<section id="product-page-guide">
+  <h2>🛍️ Product Page: Offers &amp; Trust Badges</h2>
+
+  <h3>Offers Section</h3>
+  <table>
+    <tr><th>What</th><th>File</th></tr>
+    <tr><td>Offer items (titles &amp; descriptions)</td><td><code>src/config/product-page.ts</code> → <code>PRODUCT_PAGE_PROMO</code></td></tr>
+    <tr><td>Policy page links</td><td><code>src/config/product-page.ts</code> → <code>PRODUCT_PAGE_POLICY_LINKS</code></td></tr>
+  </table>
+
+  <h3>Trust Badges</h3>
+  <p>The trust icons row below the accordion on every product page.</p>
+  <table>
+    <tr><th>What</th><th>File</th></tr>
+    <tr><td>Badge list (title, subtitle, icon key)</td><td><code>src/config/product-page.ts</code> → <code>PRODUCT_PAGE_TRUST_BADGES</code></td></tr>
+    <tr><td>SVG icon definitions</td><td><code>src/components/ProductTrustBadges.tsx</code></td></tr>
+  </table>
+  <div class="note">
+    <strong>Icon keys:</strong> leather, craft, secure, ethical, packaging, warranty, returns.
+    To add a new icon, add an SVG to the <code>BADGE_ICONS</code> map in ProductTrustBadges.tsx.
+  </div>
+
+  <h3>Product Description Accordion</h3>
+  <p>The accordion automatically parses the WooCommerce product description into sections using headings like "Size and Material", "Returns and Exchanges", "Warranty", and "Ethically Made".</p>
+  <p>No config file needed — just structure your WooCommerce description with those section headings.</p>
+</section>
+
+<!-- ─── REVIEWS ─── -->
+<section id="reviews-guide">
+  <h2>⭐ Reviews</h2>
+  <p>Reviews are fetched from WooCommerce on every product page, including images attached via the Customer Reviews plugin.</p>
+
+  <h3>Where Things Live</h3>
+  <table>
+    <tr><th>What</th><th>File</th></tr>
+    <tr><td>Review fetching + media extraction</td><td><code>src/lib/reviews.ts</code></td></tr>
+    <tr><td>Review API endpoint</td><td><code>src/app/api/reviews/route.ts</code></td></tr>
+    <tr><td>Review upload API</td><td><code>src/app/api/reviews/upload/route.ts</code></td></tr>
+    <tr><td>Review section UI</td><td><code>src/components/ProductReviewSection.tsx</code></td></tr>
+    <tr><td>Write a Review modal</td><td><code>src/components/WriteReviewModal.tsx</code></td></tr>
+    <tr><td>Review trust badges</td><td><code>src/config/product-page.ts</code> → <code>PRODUCT_PAGE_REVIEW_BADGES</code></td></tr>
+  </table>
+
+  <h3>Review Moderation</h3>
+  <p>All submitted reviews go into WooCommerce's moderation queue. Nothing appears on the site until you approve it in WooCommerce → Reviews.</p>
+</section>
+
+<!-- ─── SCRATCH COUPON ─── -->
+<section id="scratch-coupon-guide">
+  <h2>🎟️ Scratch Coupon</h2>
+  <p>The scratch card appears only on product pages. Users scratch to reveal a discount.</p>
+
+  <h3>Where Things Live</h3>
+  <table>
+    <tr><th>What</th><th>File</th></tr>
+    <tr><td>Scratch card UI</td><td><code>src/components/ScratchCoupon.tsx</code></td></tr>
+    <tr><td>Backend logic (weights, cookie, JWT)</td><td><code>src/lib/scratch-coupon.ts</code></td></tr>
+    <tr><td>API endpoints (spin + status)</td><td><code>src/app/api/lucky-draw/spin/route.ts</code><br /><code>src/app/api/lucky-draw/status/route.ts</code></td></tr>
+  </table>
+
+  <h3>Discount Weights</h3>
+  <pre><code>// In src/lib/scratch-coupon.ts
+{ discount: 5,  weight: 50 },   // 50% chance → 5% off
+{ discount: 10, weight: 40 },   // 40% chance → 10% off
+{ discount: 15, weight: 10 },   // 10% chance → 15% off</code></pre>
+  <p>The visual reveal can show up to 50%, but the <strong>applied discount is always 5%, 10%, or 15%</strong>.</p>
+  <p>Each user can only scratch once per 30 days (tracked by cookie + IP).</p>
+</section>
+
+<!-- ─── COUPONS ─── -->
+<section id="coupons-guide">
+  <h2>💰 Coupons &amp; Discounts</h2>
+
+  <h3>Automatic Tier Discounts</h3>
+  <ul>
+    <li><strong>1 item</strong> → 15% off (automatic)</li>
+    <li><strong>2+ items</strong> → 20% off (automatic)</li>
+    <li><strong>Prepaid</strong> → Extra 5% off (automatic)</li>
+  </ul>
+  <p>These are not configurable via config files. They are in <code>src/lib/coupon-calculator.ts</code>.</p>
+
+  <h3>Manual Coupons (Influencer, Seasonal, etc.)</h3>
+  <table>
+    <tr><th>What</th><th>File</th></tr>
+    <tr><td>All manual coupon codes</td><td><code>src/config/coupons.ts</code></td></tr>
+  </table>
+  <p>Follow the examples in the file to add new influencer or seasonal codes. All discounts are globally capped at <strong>35%</strong>.</p>
+</section>
+
+<!-- ─── HERO ─── -->
+<section id="hero-guide">
+  <h2>🖼️ Homepage Hero</h2>
+  <table>
+    <tr><th>What</th><th>File</th></tr>
+    <tr><td>Hero component (images, text, CTA)</td><td><code>src/components/PremiumHero.tsx</code></td></tr>
+    <tr><td>Customer reviews slider</td><td><code>src/components/CustomerReviewsSection.tsx</code></td></tr>
+    <tr><td>Donna Spotlight section</td><td><code>src/components/LegacyHomePage.tsx</code> (search for "Donna")</td></tr>
+    <tr><td>Instagram feed</td><td><code>src/components/InstagramFeed.tsx</code></td></tr>
+  </table>
+</section>
+
+<!-- ─── FOOTER & HEADER ─── -->
+<section id="footer-guide">
+  <h2>📋 Footer &amp; Header</h2>
+  <table>
+    <tr><th>What</th><th>File</th></tr>
+    <tr><td>Header / Navigation</td><td><code>src/components/PremiumHeader.tsx</code></td></tr>
+    <tr><td>Footer</td><td><code>src/components/PremiumFooter.tsx</code></td></tr>
+    <tr><td>Mobile bottom nav</td><td><code>src/components/MobileBottomNav.tsx</code></td></tr>
+    <tr><td>Global layout (wraps all pages)</td><td><code>src/app/layout.tsx</code></td></tr>
+    <tr><td>Global CSS styles</td><td><code>src/app/globals.css</code></td></tr>
+  </table>
+</section>
+
+<!-- ─── DEPLOYMENT ─── -->
+<section id="deployment-guide">
+  <h2>🚀 Deployment</h2>
+  <ol>
+    <li>Make your edits to the config files listed above.</li>
+    <li>Save the file(s).</li>
+    <li>Push to Git: <code>git add . && git commit -m "update config" && git push</code></li>
+    <li>Vercel will auto-deploy within 1-2 minutes.</li>
+  </ol>
+  <div class="note">
+    <strong>Tip:</strong> For simple text/color/product changes, you only need to edit the config files in <code>src/config/</code>. No component code changes needed.
+  </div>
+
+  <h3>Live Section Links</h3>
+  <table>
+    <tr><th>Section</th><th>URL</th></tr>
+    <tr><td>Hot Sellers</td><td><a href="/#hot-sellers">/#hot-sellers</a></td></tr>
+    <tr><td>Most Loved Styles</td><td><a href="/#most-loved-styles">/#most-loved-styles</a></td></tr>
+    <tr><td>Site Guide (this page)</td><td><a href="/site-guide.html">/site-guide.html</a></td></tr>
+  </table>
+</section>
+
+</main>
+
+</body>
+</html>

@@ -25,12 +25,19 @@ import {
   getVariationQueryValue,
   type WCProduct,
 } from "@/lib/woocommerce";
+import type { ProductReviewBundle } from "@/lib/reviews";
 import { useCartStore } from "@/store/cart";
 import { useWishlistStore } from "@/store/wishlist";
+import ProductOffers from "@/components/ProductOffers";
+import ProductAccordion from "@/components/ProductAccordion";
+import ProductTrustBadges from "@/components/ProductTrustBadges";
+import ProductReviewSection from "@/components/ProductReviewSection";
+import ScratchCoupon from "@/components/ScratchCoupon";
 
 interface ProductDetailsProps {
   product: WCProduct;
   variations: WCProduct[];
+  reviewBundle?: ProductReviewBundle;
 }
 
 interface VariationOption {
@@ -154,6 +161,7 @@ function formatPrice(value: number) {
 export default function ProductDetails({
   product,
   variations,
+  reviewBundle,
 }: ProductDetailsProps) {
   const searchParams = useSearchParams();
   const selectedColorParam = searchParams.get("attribute_pa_color");
@@ -849,6 +857,25 @@ export default function ProductDetails({
           </div>
         </div>
       </section>
+
+      {/* ── Lower-page modules ── */}
+      <ProductOffers />
+
+      <div className="mt-8">
+        <ProductAccordion description={product.description} />
+      </div>
+
+      <ProductTrustBadges />
+
+      {reviewBundle && (
+        <ProductReviewSection
+          productId={product.id}
+          productName={product.name}
+          bundle={reviewBundle}
+        />
+      )}
+
+      <ScratchCoupon />
 
       {isZoomOpen && currentImage && (
         <div className="fixed inset-0 z-[70] bg-[rgba(18,15,11,0.94)] px-4 py-6 sm:px-6 lg:px-10">

@@ -25,52 +25,41 @@ import { Coupon } from "@/types/coupon";
 
 export const AVAILABLE_COUPONS: Coupon[] = [
   // ─────────────────────────────────────────────
-  // INFLUENCER / PARTNER COUPONS
+  // INFLUENCER / PARTNER / SEASONAL COUPON TEMPLATE (EASY TO COPY)
+  // ─────────────────────────────────────────────
+  // 
+  // Simply uncomment the block below and change the values.
+  // 
+  // {
+  //   id: "campaign-fnf-2026",
+  //   code: "FNF",                  // ← Name of the coupon users will enter
+  //   type: "percentage",
+  //   category: "influencer",       // "influencer" stacks with other promotions. "standard" DOES NOT stack.
+  //   stackable: true,              // Set to false if this shouldn't be used with other promo codes
+  //   amount: 10,                   // ← 10 means 10% off
+  //   description: "Family & Friends - 10% Off", 
+  //   startDate: "2026-05-01",      // ← Active FROM this date (optional, ISO string format YYYY-MM-DD)
+  //   expiryDate: "2026-05-31",     // ← Active UNTIL this date (optional, ISO string format YYYY-MM-DD)
+  //   isActive: true,               // ← Set to false to disable immediately
+  //   isAutomatic: false,
+  //   usageCount: 0,
+  // },
+  //
+  // ─────────────────────────────────────────────
+  // CURRENT ACTIVE COUPONS
   // ─────────────────────────────────────────────
   {
     id: "influencer-ff10",
-    code: "F&F", // Friends and Family
+    code: "F&F", 
     type: "percentage",
     category: "influencer",
-    stackable: true, // Allows stacking with other active coupons
-    amount: 10, // 10% off
+    stackable: true, 
+    amount: 10,
     description: "Friends & Family - 10% Off",
     isActive: true,
     isAutomatic: false,
     usageCount: 0,
   },
-  
-  // Example for future influencer:
-  // {
-  //   id: "influencer-priya",
-  //   code: "PRIYA10",
-  //   type: "percentage",
-  //   category: "influencer",
-  //   stackable: true,
-  //   amount: 10,
-  //   description: "Priya's Exclusive - 10% Off",
-  //   isActive: true,
-  //   isAutomatic: false,
-  //   usageCount: 0,
-  // },
-
-  // ─────────────────────────────────────────────
-  // SEASONAL / EVENT COUPONS
-  // ─────────────────────────────────────────────
-  // Example for Eid:
-  // {
-  //   id: "seasonal-eid",
-  //   code: "EID15",
-  //   type: "percentage",
-  //   category: "seasonal",
-  //   stackable: true,
-  //   amount: 15, // 15% off
-  //   description: "Eid Special - 15% Off",
-  //   expiryDate: "2026-06-30", // Setting an expiry auto-disables it later
-  //   isActive: true,
-  //   isAutomatic: false,
-  //   usageCount: 0,
-  // },
 
   // Example for Diwali:
   // {

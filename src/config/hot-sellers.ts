@@ -24,6 +24,14 @@
  * ============================================================
  */
 
+export const HOT_SELLER_SECTION = {
+  id: "hot-sellers",
+  label: "Hot Seller",
+  title: "Structured designs that carry essentials and confidence.",
+  labelColor: "#b59a5c",
+  backgroundColor: "#ffffff",
+};
+
 export const HOT_SELLER_IDS: number[] = [
   3459, // 🛍️ Freya
   3137, // 🛍️ The Amara
@@ -35,6 +43,6 @@ export const HOT_SELLER_IDS: number[] = [
  * Section heading & subheading — change these to update the text above the grid.
  */
 export const HOT_SELLER_HEADING = {
-  label: "Hot Seller",
-  title: "Structured designs that carry essentials and confidence.",
+  label: HOT_SELLER_SECTION.label,
+  title: HOT_SELLER_SECTION.title,
 };

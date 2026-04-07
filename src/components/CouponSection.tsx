@@ -53,13 +53,6 @@ export default function CouponSection() {
         </ul>
       </div>
 
-      <div className="mb-4 p-4 bg-[#1a1a1a] rounded-lg flex items-center justify-between">
-        <div>
-          <p className="text-white text-sm font-medium">Want an extra discount?</p>
-          <p className="text-gray-400 text-xs mt-0.5">Spin the Lucky Wheel to win up to 15% off!</p>
-        </div>
-        <Sparkles className="w-6 h-6 text-[#b59a5c]" />
-      </div>
       <p className="text-xs text-gray-500 mb-4">You can apply extra influencer or seasonal codes below.</p>
 
       {/* Coupon Input */}
