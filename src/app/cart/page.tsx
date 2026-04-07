@@ -9,7 +9,7 @@ import { motion, AnimatePresence } from "framer-motion";
 export default function CartPage() {
   const { items, updateQuantity, removeItem, getSubtotal } = useCartStore();
   const subtotal = getSubtotal();
-  const shipping = subtotal >= 3000 ? 0 : 150;
+  const shipping = 0;
   const total = subtotal + shipping;
 
   return (
@@ -132,7 +132,7 @@ export default function CartPage() {
                   <div className="bg-white p-4 rounded-xl border border-gray-100 flex flex-col items-center text-center">
                     <Truck className="w-5 h-5 text-[#b59a5c] mb-2" />
                     <span className="text-[11px] font-bold text-gray-800">Free Shipping</span>
-                    <span className="text-[10px] text-gray-400">On orders over ₹3,000</span>
+                    <span className="text-[10px] text-gray-400">Always free on all orders</span>
                   </div>
                   <div className="bg-white p-4 rounded-xl border border-gray-100 flex flex-col items-center text-center">
                     <Shield className="w-5 h-5 text-[#b59a5c] mb-2" />
@@ -159,16 +159,8 @@ export default function CartPage() {
                     </div>
                     <div className="flex justify-between items-center">
                       <span className="text-gray-500 font-medium">Shipping</span>
-                      <span className="font-bold text-[#b59a5c]">{shipping === 0 ? "FREE" : `₹${shipping}`}</span>
+                      <span className="font-bold text-[#b59a5c]">FREE</span>
                     </div>
-                    {shipping > 0 && (
-                      <p className="text-[11px] text-[#b59a5c]">Add ₹{(3000 - subtotal).toLocaleString("en-IN")} more for Free Shipping</p>
-                    )}
-                    {shipping === 0 && (
-                      <div className="bg-[#fcf8e8] text-[#8a6d3b] p-2 rounded text-center text-xs font-semibold">
-                        ✓ You&apos;ve unlocked free shipping!
-                      </div>
-                    )}
                     <div className="border-t border-gray-100 pt-4 flex justify-between font-bold text-base text-gray-900">
                       <span>Total Amount</span>
                       <span className="text-lg">₹{total.toLocaleString("en-IN")}</span>

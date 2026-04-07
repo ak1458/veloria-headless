@@ -54,5 +54,5 @@ export const MAX_DISCOUNT_PERCENT = 35;
 
 export const PREPAID_BONUS_PERCENT = 5;
 export const COD_FEE = 149;
-export const FREE_SHIPPING_THRESHOLD = 3000;
-export const STANDARD_SHIPPING_COST = 150;
+export const FREE_SHIPPING_THRESHOLD = 0;
+export const STANDARD_SHIPPING_COST = 0;

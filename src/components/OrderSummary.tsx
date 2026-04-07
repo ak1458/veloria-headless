@@ -122,7 +122,7 @@ export default function OrderSummary({ showCouponSection = true }: OrderSummaryP
           {calculation?.shippingCost === 0 ? (
             <span className="font-bold text-green-600 text-xs">FREE</span>
           ) : (
-            <span className="font-semibold">₹{calculation?.shippingCost || 150}</span>
+            <span className="font-semibold">₹{calculation?.shippingCost || 0}</span>
           )}
         </div>
 
@@ -152,21 +152,6 @@ export default function OrderSummary({ showCouponSection = true }: OrderSummaryP
           <span>₹{(calculation?.finalTotal || subtotal).toLocaleString("en-IN")}</span>
         </div>
       </div>
-
-      {/* Free Shipping Progress */}
-      {subtotal < 3000 && (
-        <div className="mt-4 p-3 bg-gray-50 rounded-lg">
-          <p className="text-xs text-gray-600 mb-2">
-            Add ₹{(3000 - subtotal).toLocaleString("en-IN")} more for free shipping
-          </p>
-          <div className="h-1.5 bg-gray-200 rounded-full overflow-hidden">
-            <div
-              className="h-full bg-[#b59a5c] transition-all duration-300"
-              style={{ width: `${Math.min((subtotal / 3000) * 100, 100)}%` }}
-            />
-          </div>
-        </div>
-      )}
     </div>
   );
 }
