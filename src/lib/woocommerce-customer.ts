@@ -21,7 +21,7 @@ export async function createWCCustomer(data: CustomerRegisterData): Promise<WooC
       password: data.password,
       first_name: data.firstName,
       last_name: data.lastName,
-      username: data.email.split("@")[0] + Math.floor(Math.random() * 1000),
+      username: data.email.split("@")[0] + "_" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
       billing: {
         first_name: data.firstName,
         last_name: data.lastName,

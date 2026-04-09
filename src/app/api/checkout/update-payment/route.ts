@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createShiprocketOrder } from "@/lib/shiprocket";
+import crypto from "crypto";
 
 const WC_API_URL = process.env.WC_API_URL?.trim();
 const CONSUMER_KEY = process.env.WC_CONSUMER_KEY?.trim();
@@ -12,7 +13,7 @@ function getAuthHeader(): string {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { orderId, paymentId, status } = body;
+    const { orderId, paymentId, razorpayOrderId, razorpaySignature, status } = body;
 
     if (!orderId || !paymentId || !status) {
       return NextResponse.json(
@@ -26,6 +27,46 @@ export async function POST(request: NextRequest) {
         { error: "Server configuration error" },
         { status: 500 }
       );
+    }
+
+    // ========================================
+    // RAZORPAY SIGNATURE VERIFICATION (BUG-01 FIX)
+    // Prevents attackers from marking orders as paid without actual payment
+    // ========================================
+    if (status === "completed") {
+      const RAZORPAY_KEY_SECRET = process.env.RAZORPAY_KEY_SECRET;
+
+      if (!RAZORPAY_KEY_SECRET) {
+        console.error("[UpdatePayment] Missing RAZORPAY_KEY_SECRET");
+        return NextResponse.json(
+          { error: "Server configuration error" },
+          { status: 500 }
+        );
+      }
+
+      if (!razorpayOrderId || !razorpaySignature) {
+        console.warn("[UpdatePayment] Missing signature fields for completed payment");
+        return NextResponse.json(
+          { error: "Payment signature verification failed — missing fields" },
+          { status: 400 }
+        );
+      }
+
+      // Verify signature: HMAC SHA256 of "razorpayOrderId|paymentId" with secret
+      const expectedSignature = crypto
+        .createHmac("sha256", RAZORPAY_KEY_SECRET)
+        .update(`${razorpayOrderId}|${paymentId}`)
+        .digest("hex");
+
+      if (expectedSignature !== razorpaySignature) {
+        console.error(`[UpdatePayment] Signature mismatch for order ${orderId}. Expected: ${expectedSignature}, Got: ${razorpaySignature}`);
+        return NextResponse.json(
+          { error: "Payment signature verification failed" },
+          { status: 403 }
+        );
+      }
+
+      console.log(`[UpdatePayment] Signature verified for order ${orderId}`);
     }
 
     // Update WooCommerce order with payment details
@@ -81,6 +122,12 @@ export async function POST(request: NextRequest) {
         0
       );
 
+      // BUG-04 FIX: Calculate actual discount from order metadata
+      const totalSavingsMeta = (order.meta_data || []).find(
+        (m: { key: string; value: string }) => m.key === "_total_savings"
+      );
+      const actualDiscount = totalSavingsMeta ? parseFloat(totalSavingsMeta.value) || 0 : 0;
+
       // Fire-and-forget — don't block payment confirmation
       createShiprocketOrder({
         orderId: order.id,
@@ -99,7 +146,7 @@ export async function POST(request: NextRequest) {
         paymentMethod: "prepaid",
         subtotal,
         shippingCharges: shippingTotal,
-        discount: 0,
+        discount: actualDiscount,
         total: subtotal,
       }).catch((err) => console.error("[UpdatePayment] Shiprocket sync failed (non-blocking):", err));
     }

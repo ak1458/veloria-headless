@@ -182,14 +182,8 @@ export async function POST(request: NextRequest) {
     const secureItems = validatedData.items.map((clientItem) => {
       const realProduct = realProducts.find((p) => p.id === clientItem.id);
       if (!realProduct) {
-        console.warn(`[Checkout] Product ${clientItem.id} not found in WC`);
-        return {
-          ...clientItem,
-          price: clientItem.price, // Fallback to client price with warning
-          slug: "",
-          image: "",
-          category: "",
-        };
+        console.error(`[Checkout] SECURITY: Product ${clientItem.id} (${clientItem.name}) not found in WC � rejecting order`);
+        throw new Error(`Product "${clientItem.name}" could not be verified. Please refresh your cart.`);
       }
       return {
         ...clientItem,
@@ -391,7 +385,7 @@ export async function POST(request: NextRequest) {
           state: validatedData.state,
           postalCode: validatedData.postalCode,
         },
-        items: validatedData.items.map((item) => ({
+        items: secureItems.map((item) => ({
           id: item.id,
           name: item.name,
           quantity: item.quantity,

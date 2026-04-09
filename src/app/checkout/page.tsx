@@ -46,6 +46,7 @@ export default function CheckoutPage() {
   const [orderError, setOrderError] = useState<string | null>(null);
   const [placedOrder, setPlacedOrder] = useState<{ orderId: number; orderNumber: string } | null>(null);
   const [pendingOrder, setPendingOrder] = useState<PendingOrder | null>(null);
+  const [showCodModal, setShowCodModal] = useState(false);
   const formDataRef = useRef<CheckoutFormData | null>(null);
 
   const {
@@ -65,6 +66,12 @@ export default function CheckoutPage() {
       setOrderError(null);
       return;
     }
+
+    if (!isPrepaid && !showCodModal) {
+      setShowCodModal(true);
+      return;
+    }
+
     onSubmit(data);
   };
 
@@ -161,15 +168,17 @@ export default function CheckoutPage() {
     }
   };
 
-  const handlePaymentSuccess = async (paymentId: string) => {
-    // Update order with payment info
+  const handlePaymentSuccess = async (paymentData: { paymentId: string; razorpayOrderId: string; razorpaySignature: string }) => {
+    // Update order with payment info + signature for server-side verification
     try {
       await fetch("/api/checkout/update-payment", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           orderId: pendingOrder?.orderId,
-          paymentId,
+          paymentId: paymentData.paymentId,
+          razorpayOrderId: paymentData.razorpayOrderId,
+          razorpaySignature: paymentData.razorpaySignature,
           status: "completed",
         }),
       });
@@ -219,11 +228,11 @@ export default function CheckoutPage() {
             className="bg-white p-8 rounded-2xl border border-gray-100 shadow-sm"
           >
             <div className="text-center mb-8">
-              <div className="w-16 h-16 bg-green-50 rounded-full flex items-center justify-center mx-auto mb-4">
-                <Check className="w-8 h-8 text-green-500" />
+              <div className="w-16 h-16 bg-blue-50 rounded-full flex items-center justify-center mx-auto mb-4">
+                <Loader2 className="w-8 h-8 text-blue-500 animate-spin" />
               </div>
-              <h2 className="font-serif text-2xl text-gray-900 mb-2">Order Created Successfully!</h2>
-              <p className="text-sm text-gray-500">Order #{pendingOrder.orderNumber}</p>
+              <h2 className="font-serif text-2xl text-gray-900 mb-2">Processing Payment...</h2>
+              <p className="text-sm text-gray-500">Please do not close this window</p>
             </div>
 
             <div className="bg-gray-50 p-6 rounded-xl mb-8">
@@ -233,7 +242,7 @@ export default function CheckoutPage() {
               </div>
               <div className="border-t border-gray-200 my-3"></div>
               <p className="text-sm text-gray-500 text-center">
-                Your order has been created. Click below to complete the payment via Razorpay.
+                Your secure payment gateway is opening...
               </p>
             </div>
 
@@ -309,6 +318,52 @@ export default function CheckoutPage() {
 
   return (
     <div className="min-h-screen bg-[#faf8f5] pb-16 pt-20 sm:pt-24">
+      {/* COD Warning Modal */}
+      {showCodModal && formDataRef.current && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="bg-white rounded-2xl shadow-xl max-w-md w-full p-6 text-center"
+          >
+            <div className="w-16 h-16 bg-amber-50 rounded-full flex items-center justify-center mx-auto mb-4">
+              <span className="text-2xl">💸</span>
+            </div>
+            <h3 className="font-serif text-xl font-medium text-gray-900 mb-2">Wait! Save ₹149 on COD fee</h3>
+            <p className="text-sm text-gray-600 mb-6">
+              You selected Cash on Delivery, which includes an extra ₹149 convenience fee. Switch to Prepaid to save this fee AND get an extra 5% off!
+            </p>
+            <div className="space-y-3">
+              <button
+                onClick={() => {
+                  setIsPrepaid(true);
+                  setShowCodModal(false);
+                }}
+                className="w-full bg-[#1a1a1a] text-white py-3 rounded text-sm font-semibold hover:bg-black transition-colors shadow-md"
+              >
+                Switch to Prepaid & Save
+              </button>
+              <button
+                onClick={() => {
+                  setShowCodModal(false);
+                  onSubmit(formDataRef.current!);
+                }}
+                className="w-full bg-white text-gray-600 border border-gray-200 py-3 rounded text-sm font-semibold hover:bg-gray-50 transition-colors"
+                disabled={isSubmitting}
+              >
+                {isSubmitting ? (
+                  <span className="flex items-center justify-center gap-2">
+                    <Loader2 className="w-4 h-4 animate-spin" /> Processing...
+                  </span>
+                ) : (
+                  "Continue with COD (Pay ₹149 Extra)"
+                )}
+              </button>
+            </div>
+          </motion.div>
+        </div>
+      )}
+
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-start">
           

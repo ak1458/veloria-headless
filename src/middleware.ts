@@ -52,7 +52,7 @@ const BLOCKED_PATHS = [
 const SUSPICIOUS_PATTERNS = [
   /<script/i,
   /javascript:/i,
-  /on\w+=/i,
+  /\bon(click|load|error|mouseover|focus|blur|submit|change|keyup|keydown)=/i,
   /select.*from/i,
   /union.*select/i,
   /drop.*table/i,

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useRef } from "react";
+import { useState, useCallback, useRef, useEffect } from "react";
 import { Loader2 } from "lucide-react";
 
 interface RazorpayPaymentProps {
@@ -12,7 +12,7 @@ interface RazorpayPaymentProps {
     email: string;
     phone: string;
   };
-  onSuccess: (paymentId: string) => void;
+  onSuccess: (paymentData: { paymentId: string; razorpayOrderId: string; razorpaySignature: string }) => void;
   onError: (error: string) => void;
 }
 
@@ -153,7 +153,11 @@ export default function RazorpayPayment({
             const verifyData = await verifyResponse.json();
 
             if (verifyData.success) {
-              onSuccess(response.razorpay_payment_id);
+              onSuccess({
+                paymentId: response.razorpay_payment_id,
+                razorpayOrderId: response.razorpay_order_id,
+                razorpaySignature: response.razorpay_signature,
+              });
             } else {
               onError("Payment verification failed");
             }
@@ -177,25 +181,31 @@ export default function RazorpayPayment({
     }
   };
 
+  useEffect(() => {
+    // Automatically trigger payment when component mounts
+    handlePayment();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   return (
-    <button
-      onClick={handlePayment}
-      disabled={isLoading}
-      className="w-full flex items-center justify-center space-x-2 bg-[#072654] text-white py-4 text-xs font-bold uppercase tracking-widest hover:bg-[#0d3a7a] transition-colors disabled:opacity-50 rounded shadow-sm"
-    >
+    <div className="w-full flex flex-col items-center justify-center space-y-4 py-4 text-gray-500">
       {isLoading ? (
-        <>
-          <Loader2 size={16} className="animate-spin" />
-          <span>Initializing Payment...</span>
-        </>
+        <div className="flex flex-col items-center space-y-3">
+          <Loader2 size={32} className="animate-spin text-blue-500" />
+          <p className="text-sm font-medium">Initializing Secure Payment...</p>
+        </div>
       ) : (
-        <>
+        <button
+          onClick={handlePayment}
+          disabled={isLoading}
+          className="w-full flex items-center justify-center space-x-2 bg-[#072654] text-white py-4 text-xs font-bold uppercase tracking-widest hover:bg-[#0d3a7a] transition-colors disabled:opacity-50 rounded shadow-sm"
+        >
           <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
             <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
           </svg>
           <span>Pay Securely with Razorpay</span>
-        </>
+        </button>
       )}
-    </button>
+    </div>
   );
 }
