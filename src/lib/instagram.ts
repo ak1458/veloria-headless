@@ -7,8 +7,8 @@ export interface InstagramPost {
 
 export async function getInstagramFeed(): Promise<InstagramPost[]> {
   try {
-    // Fetch from the WordPress subdomain since veloriavault.com now points to Vercel
-    const response = await fetch("https://wp.veloriavault.com/", {
+    // Fetch from the WordPress domain since it is now accessible directly
+    const response = await fetch("https://veloriavault.com/", {
       next: { revalidate: 900 },
     });
     

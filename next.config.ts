@@ -16,10 +16,6 @@ const nextConfig: NextConfig = {
       },
       {
         protocol: "https",
-        hostname: "wp.veloriavault.com",
-      },
-      {
-        protocol: "https",
         hostname: "veloriavault.com",
       },
       {
@@ -61,9 +57,8 @@ const nextConfig: NextConfig = {
   
   // Proxy wp-content requests to WordPress server (product images, CSS, etc.)
   // Routes through our API media proxy because:
-  // - veloriavault.com DNS → Vercel (would loop back if used in rewrite)
-  // - wp.veloriavault.com DNS → Hostinger, but LiteSpeed only serves static
-  //   files for the "veloriavault.com" vhost, returning 404 for wp.* hostname
+  // - veloriavault.com DNS → Hostinger now properly routes and serves static
+  //   files for the "veloriavault.com" vhost.
   // - The API proxy fetches from the IP with Host: veloriavault.com header
   async rewrites() {
     return [
@@ -73,7 +68,7 @@ const nextConfig: NextConfig = {
       },
       {
         source: "/wp-includes/:path*",
-        destination: "https://wp.veloriavault.com/wp-includes/:path*",
+        destination: "https://veloriavault.com/wp-includes/:path*",
       },
     ];
   },

@@ -30,7 +30,7 @@
 ┌──────────────────────────┐         REST API          ┌──────────────────────────┐
 │   VERCEL (Frontend)      │ ◄────────────────────────► │  HOSTINGER (Backend)     │
 │                          │    wp-json/wc/v3           │                          │
-│   veloriavault.com       │                            │   wp.veloriavault.com    │
+│   veloriavault.com       │                            │   veloriavault.com       │
 │   Next.js 16 (React)     │                            │   WordPress 6.9.4        │
 │   Node.js Serverless     │                            │   WooCommerce 10.6.1     │
 │                          │                            │                          │
@@ -308,7 +308,7 @@ export const HOT_SELLER_HEADING = {
 
 All products are managed through the **WordPress Admin Dashboard**:
 
-👉 **URL:** `https://wp.veloriavault.com/wp-admin`
+👉 **URL:** `https://veloriavault.com/wp-admin`
 
 1. Log in with your WordPress admin credentials.
 2. Go to **Products → All Products**.
@@ -323,7 +323,7 @@ All products are managed through the **WordPress Admin Dashboard**:
 ## 7. How To: Manage Orders & Shipping
 
 ### Orders
-- **WordPress Admin:** `wp.veloriavault.com/wp-admin` → WooCommerce → Orders
+- **WordPress Admin:** `veloriavault.com/wp-admin` → WooCommerce → Orders
 - View order details, update status, issue refunds.
 
 ### Shipping (Shiprocket)
@@ -377,7 +377,7 @@ vercel --prod
 ### Backend (Hostinger)
 - **Platform:** Hostinger Shared Hosting
 - **Server IP:** `145.79.212.69`
-- **Domain:** `wp.veloriavault.com`
+- **Domain:** `veloriavault.com`
 - **WordPress:** 6.9.4
 - **WooCommerce:** 10.6.1
 - **PHP:** 8.3.30
@@ -410,7 +410,7 @@ ssh -p 65002 -i ~/.ssh/id_ed25519_fast_v2 u679998479@145.79.212.69
 ### Local Development: `.env.local`
 
 ```env
-WC_API_URL=https://wp.veloriavault.com/wp-json/wc/v3
+WC_API_URL=https://veloriavault.com/wp-json/wc/v3
 WC_CONSUMER_KEY=ck_xxxxx
 WC_CONSUMER_SECRET=cs_xxxxx
 JWT_SECRET=xxxxx
@@ -470,7 +470,7 @@ Manage payments, refunds, settlements at: [dashboard.razorpay.com](https://dashb
 ## 13. Troubleshooting
 
 ### Products not loading?
-1. Check if WordPress is up: `curl https://wp.veloriavault.com/wp-json/wc/v3`
+1. Check if WordPress is up: `curl https://veloriavault.com/wp-json/wc/v3`
 2. Check Vercel logs: `vercel logs`
 3. Verify `WC_API_URL` is correct in Vercel environment variables.
 
@@ -486,7 +486,7 @@ Manage payments, refunds, settlements at: [dashboard.razorpay.com](https://dashb
 - Ensure both A record (76.76.21.21) and CNAME (cname.vercel-dns.com) are set.
 
 ### WordPress admin not accessible?
-- URL: `https://wp.veloriavault.com/wp-admin`
+- URL: `https://veloriavault.com/wp-admin`
 - SSH: `ssh VELORIA` then check `~/domains/veloriavault.com/public_html/`
 
 ### Lucky Draw not spinning?

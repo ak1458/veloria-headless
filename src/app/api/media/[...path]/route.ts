@@ -3,9 +3,9 @@ import { NextRequest, NextResponse } from "next/server";
 /**
  * Media proxy that fetches WordPress static files from the Hostinger server.
  *
- * Problem: wp.veloriavault.com resolves to Hostinger IP 145.79.212.69 but
- * LiteSpeed only serves static files for the "veloriavault.com" vhost.
- * The wp.* subdomain returns 404 for images/CSS while PHP requests work.
+ * Problem: veloriavault.com resolves to Hostinger IP 145.79.212.69 (or sometimes Vercel depending on DNS) but
+ * LiteSpeed only serves static files for the "veloriavault.com" vhost correctly
+ * when queried with the exact IP and Server Name Indication (SNI).
  *
  * Solution: Connect to the IP directly with the correct SNI (veloriavault.com)
  * so LiteSpeed matches the correct vhost and serves the static files.
