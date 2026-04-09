@@ -17,6 +17,7 @@ const SECTION_MARKERS = [
   { pattern: /ethic(?:al(?:ly)?|s)\s*(?:made|production)?/i, title: "Ethical Production" },
   { pattern: /more\s*information/i, title: "More Information" },
 ];
+const HIDDEN_SECTION_TITLES = new Set(["Warranty Policy"]);
 
 function stripEmptyTags(html: string): string {
   return html
@@ -103,7 +104,7 @@ export function parseDescriptionSections(
 
   // Add parsed sections with policy links
   sections.forEach((section) => {
-    if (section.content.trim()) {
+    if (section.content.trim() && !HIDDEN_SECTION_TITLES.has(section.title)) {
       result.push({
         ...section,
         content: linkifyPolicySections(section.content),
