@@ -67,4 +67,4 @@ export const PRODUCT_PAGE_TRUST_BADGES = [
   },
 ] as const;
 
-export const PRODUCT_PAGE_REVIEW_BADGES = [] as const;
+export const PRODUCT_PAGE_REVIEW_BADGES: Array<{ id: string; ringColor: string; score: string; label: string }> = [];
