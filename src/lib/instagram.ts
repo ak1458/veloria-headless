@@ -7,8 +7,9 @@ export interface InstagramPost {
 
 export async function getInstagramFeed(): Promise<InstagramPost[]> {
   try {
-    // Fetch from the WordPress domain since it is now accessible directly
-    const response = await fetch("https://veloriavault.com/", {
+    // Fetch from the WordPress domain which holds the WPzoom Instagram Widget
+    const storeUrl = process.env.NEXT_PUBLIC_LEGACY_SITE_URL || "https://api.veloriavault.com";
+    const response = await fetch(`${storeUrl}/`, {
       next: { revalidate: 900 },
     });
     
