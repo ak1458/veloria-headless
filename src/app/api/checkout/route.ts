@@ -403,7 +403,7 @@ export async function POST(request: NextRequest) {
       success: true,
       orderId: order.id,
       orderNumber: order.number,
-      total: order.total,
+      total: calculation.finalTotal, // Fix: Use headless calculated total, not WC total which lacks custom discounts
       status: order.status,
       paymentRequired: validatedData.paymentMethod !== "cod",
       paymentUrl,

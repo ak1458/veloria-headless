@@ -9,8 +9,8 @@ import { Menu, X, ShoppingBag, Heart, User, ChevronDown, Package } from "lucide-
 import { motion, AnimatePresence } from "framer-motion";
 import CartDrawer from "./CartDrawer";
 
-const DESKTOP_LOGO = "https://veloriavault.com/wp-content/uploads/2026/02/logo.svg";
-const MOBILE_LOGO = "https://veloriavault.com/wp-content/uploads/2026/02/logo.svg";
+const DESKTOP_LOGO = "https://api.veloriavault.com/wp-content/uploads/2026/02/logo.svg";
+const MOBILE_LOGO = "https://api.veloriavault.com/wp-content/uploads/2026/02/logo.svg";
 
 type SubItem = { label: string; href: string };
 type MenuColumn = { title: string; items: SubItem[] };

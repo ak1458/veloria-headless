@@ -196,7 +196,7 @@ const STORE_API_ORIGIN =
   process.env.NEXT_PUBLIC_STORE_API_URL?.trim()?.replace(/\/wp-json\/wc\/store\/v1\/?$/, "") ||
   process.env.NEXT_PUBLIC_LEGACY_SITE_URL?.trim()?.replace(/\/$/, "") ||
   WC_API_URL?.replace(/\/wp-json\/wc\/v3\/?$/, "").replace("://wp.", "://") ||
-  "https://veloriavault.com";
+  "https://api.veloriavault.com";
 
 const STORE_API_URL = `${STORE_API_ORIGIN.replace(/\/$/, "")}/wp-json/wc/store/v1`;
 
@@ -256,6 +256,32 @@ function rewriteAllMediaUrls(data: unknown): unknown {
   return data;
 }
 
+async function fetchWithRetry(url: string, options: RequestInit, retries = 2): Promise<Response> {
+  let lastError: unknown;
+  for (let i = 0; i < retries; i++) {
+    try {
+      // Use a timeout to prevent hanging requests on Hostinger
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 8000); // 8 second timeout per request
+      
+      const response = await fetch(url, { ...options, signal: controller.signal });
+      clearTimeout(timeoutId);
+
+      if (response.ok || response.status < 500) {
+        return response;
+      }
+      lastError = new Error(`HTTP ${response.status}`);
+    } catch (error) {
+      lastError = error;
+    }
+    if (i < retries - 1) {
+      // Faster backoff: 500ms
+      await new Promise((res) => setTimeout(res, 500));
+    }
+  }
+  throw lastError;
+}
+
 async function storeFetch<T>(
   endpoint: string,
   params: Record<string, string | number | boolean> = {},
@@ -275,7 +301,7 @@ async function storeFetch<T>(
   }
 
   try {
-    const response = await fetch(url.toString(), {
+    const response = await fetchWithRetry(url.toString(), {
       headers: {
         Accept: "application/json",
       },
@@ -289,7 +315,10 @@ async function storeFetch<T>(
     });
 
     if (!response.ok) {
-      const fallback = endpoint.includes("/products") || endpoint.includes("/reviews") || endpoint.includes("/categories")
+      if (endpoint.includes("/products")) {
+        throw new Error(`Failed to fetch products: ${response.status}`);
+      }
+      const fallback = endpoint.includes("/reviews") || endpoint.includes("/categories")
         ? []
         : {};
       return fallback as T;
@@ -299,7 +328,10 @@ async function storeFetch<T>(
     return rewriteAllMediaUrls(data) as T;
   } catch (error) {
     console.error("[storeFetch] Error:", endpoint, error);
-    const fallback = endpoint.includes("/products") || endpoint.includes("/reviews") || endpoint.includes("/categories")
+    if (endpoint.includes("/products")) {
+      throw error; // Let the Next.js Error Boundary handle it instead of showing 0 products
+    }
+    const fallback = endpoint.includes("/reviews") || endpoint.includes("/categories")
       ? []
       : {};
     return fallback as T;
@@ -683,6 +715,7 @@ export async function getProducts(options: {
     type: type === "variation" ? "variation" : "",
     orderby: orderby || "",
     order: order || "",
+    ...(category ? { category } : {}),
   });
 
   let products = storeProducts.map(mapStoreProduct);
@@ -729,6 +762,7 @@ export async function getProductBySlug(slug: string): Promise<WCProduct | null> 
       return matchedProduct;
     };
 
+    // Fast path: Try finding the product directly by its slug first.
     const directMatches = await getProducts({ slug: normalizedSlug, per_page: 10 });
     const directMatch = await hydrateMatchedProduct(
       findMatchedProduct(directMatches, normalizedSlug),
@@ -738,19 +772,13 @@ export async function getProductBySlug(slug: string): Promise<WCProduct | null> 
       return directMatch;
     }
 
-    const searchTerms = Array.from(
-      new Set(
-        buildSlugAliases(normalizedSlug).flatMap((value) => [
-          value,
-          value.replace(/-/g, " "),
-        ]),
-      ),
-    );
-
-    for (const searchTerm of searchTerms) {
+    // Fallback: Use one single search term query to prevent exhaustive rate-limiting.
+    // Avoid exhaustive loop. If they migrated domains, the fallback should catch it or fail fast.
+    const fallbackSearch = normalizedSlug.replace(/-/g, " ");
+    if (fallbackSearch !== normalizedSlug) {
       const searchMatches = await getProducts({
-        search: searchTerm,
-        per_page: 40,
+        search: fallbackSearch,
+        per_page: 20,
       });
       const matchedProduct = await hydrateMatchedProduct(
         findMatchedProduct(searchMatches, normalizedSlug),
@@ -813,7 +841,16 @@ export async function getProductReviews(params: {
       product_id: params.product || "",
     });
 
-    return Array.isArray(reviews) ? reviews.map(mapStoreReview) : [];
+    let mappedReviews = Array.isArray(reviews) ? reviews.map(mapStoreReview) : [];
+
+    // Strict Validation: Ensure reviews exactly map to the requested product_id to prevent mismatch
+    if (params.product) {
+      mappedReviews = mappedReviews.filter(
+        (review) => review.product_id === params.product
+      );
+    }
+
+    return mappedReviews;
   } catch (error) {
     console.error("Error fetching product reviews:", error);
     return [];

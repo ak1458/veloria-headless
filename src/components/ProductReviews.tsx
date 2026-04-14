@@ -56,7 +56,7 @@ export default function ProductReviews({
           {reviews.length === 0 ? "No reviews yet. Be the first to review this product!" : error}
         </p>
         <a 
-          href={`https://veloriavault.com/product/?review=true#reviews`}
+          href={`https://api.veloriavault.com/product/?review=true#reviews`}
           target="_blank"
           rel="noopener noreferrer"
           className="px-5 py-2 bg-black text-white text-xs font-medium hover:bg-gray-800 transition-colors inline-block"

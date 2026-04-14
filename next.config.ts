@@ -20,6 +20,10 @@ const nextConfig: NextConfig = {
       },
       {
         protocol: "https",
+        hostname: "api.veloriavault.com",
+      },
+      {
+        protocol: "https",
         hostname: "*.veloriavault.com",
       },
       {
@@ -43,7 +47,7 @@ const nextConfig: NextConfig = {
               "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
               "img-src 'self' https: http: blob: data:",
               "font-src 'self' https://fonts.gstatic.com",
-              "connect-src 'self' http://145.79.212.69 https://*.veloriavault.com https://veloriavault.com https://*.razorpay.com https://api.razorpay.com",
+              "connect-src 'self' http://145.79.212.69 https://*.veloriavault.com https://veloriavault.com https://api.veloriavault.com https://*.razorpay.com https://api.razorpay.com",
               "frame-src 'self' https://checkout.razorpay.com https://api.razorpay.com",
               "frame-ancestors 'none'",
               "base-uri 'self'",
@@ -57,9 +61,9 @@ const nextConfig: NextConfig = {
   
   // Proxy wp-content requests to WordPress server (product images, CSS, etc.)
   // Routes through our API media proxy because:
-  // - veloriavault.com DNS → Hostinger now properly routes and serves static
-  //   files for the "veloriavault.com" vhost.
-  // - The API proxy fetches from the IP with Host: veloriavault.com header
+  // - api.veloriavault.com DNS → Hostinger now properly routes and serves static
+  //   files for the "api.veloriavault.com" vhost.
+  // - The API proxy fetches from the IP with Host: api.veloriavault.com header
   async rewrites() {
     return [
       {
@@ -68,7 +72,7 @@ const nextConfig: NextConfig = {
       },
       {
         source: "/wp-includes/:path*",
-        destination: "https://veloriavault.com/wp-includes/:path*",
+        destination: "https://api.veloriavault.com/wp-includes/:path*",
       },
     ];
   },

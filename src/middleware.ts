@@ -63,6 +63,18 @@ const SUSPICIOUS_PATTERNS = [
 export function middleware(request: NextRequest) {
   const { pathname, search } = request.nextUrl;
   const userAgent = request.headers.get("user-agent") || "";
+  const host = request.headers.get("host") || "";
+
+  // ========================================
+  // DOMAIN REDIRECTION (CANONICAL & LOCKDOWN)
+  // ========================================
+  const isVercelDomain = host.includes(".vercel.app");
+  const isRootDomain = host === "veloriavault.com";
+
+  if (isVercelDomain || isRootDomain) {
+    const destination = new URL(`https://www.veloriavault.com${pathname}${search}`);
+    return NextResponse.redirect(destination, 308); // Permanent Redirect
+  }
   
   // ========================================
   // BLOCK SENSITIVE FILES

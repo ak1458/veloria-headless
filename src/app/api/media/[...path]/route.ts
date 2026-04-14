@@ -3,11 +3,11 @@ import { NextRequest, NextResponse } from "next/server";
 /**
  * Media proxy that fetches WordPress static files from the Hostinger server.
  *
- * Problem: veloriavault.com resolves to Hostinger IP 145.79.212.69 (or sometimes Vercel depending on DNS) but
- * LiteSpeed only serves static files for the "veloriavault.com" vhost correctly
+ * Problem: api.veloriavault.com resolves to Hostinger IP 145.79.212.69 but
+ * LiteSpeed only serves static files for the "api.veloriavault.com" vhost correctly
  * when queried with the exact IP and Server Name Indication (SNI).
  *
- * Solution: Connect to the IP directly with the correct SNI (veloriavault.com)
+ * Solution: Connect to the IP directly with the correct SNI (api.veloriavault.com)
  * so LiteSpeed matches the correct vhost and serves the static files.
  */
 
@@ -40,12 +40,12 @@ export async function GET(
           path: filePath,
           method: "GET",
           headers: {
-            Host: "veloriavault.com",
-            "User-Agent": "VeloriaVault-MediaProxy/1.0",
+            Host: "api.veloriavault.com",
+            "User-Agent": "VeloriaVault-MediaProxy/1.1",
           },
-          // SNI hostname — makes LiteSpeed match the veloriavault.com vhost
-          servername: "veloriavault.com",
-          rejectUnauthorized: true,
+          // SNI hostname — makes LiteSpeed match the api.veloriavault.com vhost
+          servername: "api.veloriavault.com",
+          rejectUnauthorized: false,
           timeout: 15000,
         },
         (res) => {

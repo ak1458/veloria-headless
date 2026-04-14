@@ -63,7 +63,7 @@ export default function AboutPage() {
             {/* Image */}
             <div className="relative aspect-[4/5] overflow-hidden rounded-lg">
               <Image
-                src="https://veloriavault.com/wp-content/uploads/2026/01/Bag-3-5-scaled.jpg"
+                src="https://api.veloriavault.com/wp-content/uploads/2026/01/Bag-3-5-scaled.jpg"
                 alt="Veloria Vault Craftsmanship"
                 fill
                 sizes="(min-width: 1024px) 42vw, 100vw"
@@ -120,7 +120,7 @@ export default function AboutPage() {
             {/* Image - Right side on desktop */}
             <div className="relative aspect-[4/5] overflow-hidden rounded-lg order-1 md:order-2">
               <Image
-                src="https://veloriavault.com/wp-content/uploads/2026/01/Bag-16-4-scaled.jpg"
+                src="https://api.veloriavault.com/wp-content/uploads/2026/01/Bag-16-4-scaled.jpg"
                 alt="Veloria Vault Genuine Leather"
                 fill
                 sizes="(min-width: 1024px) 42vw, 100vw"
