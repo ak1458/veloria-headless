@@ -10,7 +10,10 @@ export async function getInstagramFeed(): Promise<InstagramPost[]> {
     // Fetch from the WordPress domain which holds the WPzoom Instagram Widget
     const storeUrl = process.env.NEXT_PUBLIC_LEGACY_SITE_URL || "https://api.veloriavault.com";
     const response = await fetch(`${storeUrl}/`, {
-      next: { revalidate: 900 },
+      next: { revalidate: 3600 },
+      headers: {
+        "User-Agent": "VeloriaVault/Next.js (Vercel Legacy Fetcher)",
+      }
     });
     
     if (!response.ok) {
