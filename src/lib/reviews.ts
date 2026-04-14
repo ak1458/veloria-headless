@@ -175,21 +175,33 @@ async function fetchLegacyProductHtml(product: WCProduct) {
     ? normalizeLegacyUrl(product.permalink)
     : `${LEGACY_SITE_URL.replace(/\/$/, "")}/product/${product.slug}/`;
 
-  const response = await fetch(sourceUrl, {
-    next: {
-      revalidate: 300,
-    },
-    headers: {
-      Accept: "text/html,application/xhtml+xml",
-    },
-  });
+  try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 6000); // 6-second timeout
 
-  if (!response.ok) {
+    const response = await fetch(sourceUrl, {
+      next: {
+        revalidate: 300,
+      },
+      headers: {
+        Accept: "text/html,application/xhtml+xml",
+        "User-Agent": "VeloriaVault/Next.js (Vercel Legacy Fetcher)",
+      },
+      signal: controller.signal,
+    });
+
+    clearTimeout(timeoutId);
+
+    if (!response.ok) {
+      return "";
+    }
+
+    const html = await response.text();
+    return rewriteLegacyHtml(html);
+  } catch (error) {
+    console.error("[fetchLegacyProductHtml] Error or Timeout:", error);
     return "";
   }
-
-  const html = await response.text();
-  return rewriteLegacyHtml(html);
 }
 
 function flattenReviewMedia(reviews: WCReview[]) {
@@ -212,17 +224,29 @@ function safeJsonParse<T>(value: string): T | null {
 }
 
 async function postReviewAjax(params: URLSearchParams) {
-  const response = await fetch(REVIEW_AJAX_URL, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
-    },
-    body: params.toString(),
-    cache: "no-store",
-  });
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 10000);
 
-  const text = await response.text();
-  return safeJsonParse<{ code?: number; description?: string; button?: string }>(text);
+  try {
+    const response = await fetch(REVIEW_AJAX_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
+        "User-Agent": "VeloriaVault/Next.js (Vercel Legacy Fetcher)",
+      },
+      body: params.toString(),
+      cache: "no-store",
+      signal: controller.signal,
+    });
+
+    clearTimeout(timeoutId);
+    const text = await response.text();
+    return safeJsonParse<{ code?: number; description?: string; button?: string }>(text);
+  } catch (error) {
+    clearTimeout(timeoutId);
+    console.error("[postReviewAjax] Error or Timeout:", error);
+    return { code: 500, description: "Connection timed out to review server." };
+  }
 }
 
 export async function getProductReviewBundle(product: WCProduct): Promise<ProductReviewBundle> {
@@ -279,6 +303,9 @@ export async function uploadCustomerReviewMedia(options: {
 
   const response = await fetch(REVIEW_AJAX_URL, {
     method: "POST",
+    headers: {
+      "User-Agent": "VeloriaVault/Next.js (Vercel Legacy Fetcher)",
+    },
     body: formData,
     cache: "no-store",
   });
@@ -311,6 +338,7 @@ export async function deleteCustomerReviewMedia(token: ReviewMediaToken) {
     method: "POST",
     headers: {
       "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
+      "User-Agent": "VeloriaVault/Next.js (Vercel Legacy Fetcher)",
     },
     body: params.toString(),
     cache: "no-store",
@@ -373,6 +401,7 @@ export async function submitCustomerReview(options: {
     method: "POST",
     headers: {
       "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
+      "User-Agent": "VeloriaVault/Next.js (Vercel Legacy Fetcher)",
     },
     body: commentParams.toString(),
     redirect: "manual",
