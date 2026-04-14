@@ -304,6 +304,7 @@ async function storeFetch<T>(
     const response = await fetchWithRetry(url.toString(), {
       headers: {
         Accept: "application/json",
+        "User-Agent": "VeloriaVault/Next.js (Vercel Node.js Fetcher)",
       },
       ...(options.revalidate === false
         ? { cache: "no-store" as const }
@@ -399,6 +400,7 @@ async function adminFetch<T>(
       headers: {
         Accept: "application/json",
         Authorization: `Basic ${Buffer.from(`${CONSUMER_KEY}:${CONSUMER_SECRET}`).toString("base64")}`,
+        "User-Agent": "VeloriaVault/Next.js (Vercel Admin Fetcher)",
       },
       ...(options.revalidate === false
         ? { cache: "no-store" as const }
