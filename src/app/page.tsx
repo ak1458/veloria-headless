@@ -1,6 +1,6 @@
 import LegacyHomePage from "@/components/LegacyHomePage";
 
-export const dynamic = 'force-dynamic';
+export const revalidate = 300; // ISR: refresh every 5 minutes
 
 export const metadata = {
   title: "Veloria Vault | Luxury Leather Handbags",

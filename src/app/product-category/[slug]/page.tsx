@@ -1,7 +1,7 @@
 import CategoryContent from "./CategoryContent";
 import { getCategories, getVariationProducts } from "@/lib/woocommerce";
 
-export const dynamic = 'force-dynamic';
+export const revalidate = 300; // ISR: refresh every 5 minutes
 
 export default async function ProductCategoryPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;

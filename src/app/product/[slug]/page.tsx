@@ -4,7 +4,7 @@ import ProductDetails from "@/components/ProductDetails";
 import { getProductBySlug, getProductVariations } from "@/lib/woocommerce";
 import { getProductReviewBundle } from "@/lib/reviews";
 
-export const dynamic = 'force-dynamic';
+export const revalidate = 300; // ISR: refresh every 5 minutes
 
 interface ProductPageProps {
   params: Promise<{

@@ -177,7 +177,7 @@ async function fetchLegacyProductHtml(product: WCProduct) {
 
   try {
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 6000); // 6-second timeout
+    const timeoutId = setTimeout(() => controller.abort(), 3000); // 3-second timeout (non-critical fetch)
 
     const response = await fetch(sourceUrl, {
       next: {

@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { LEGACY_SITE_URL } from "@/lib/site";
 
 export interface WCImage {
@@ -746,7 +747,10 @@ export async function getProductById(id: number): Promise<WCProduct | null> {
   }
 }
 
-export async function getProductBySlug(slug: string): Promise<WCProduct | null> {
+// Wrapped with React cache() to deduplicate calls within the same request.
+// generateMetadata() and the page component both call this — cache() ensures
+// only ONE actual API call is made per request, not two.
+export const getProductBySlug = cache(async function getProductBySlug(slug: string): Promise<WCProduct | null> {
   try {
     const normalizedSlug = fallbackSlug(slug);
 
@@ -775,7 +779,6 @@ export async function getProductBySlug(slug: string): Promise<WCProduct | null> 
     }
 
     // Fallback: Use one single search term query to prevent exhaustive rate-limiting.
-    // Avoid exhaustive loop. If they migrated domains, the fallback should catch it or fail fast.
     const fallbackSearch = normalizedSlug.replace(/-/g, " ");
     if (fallbackSearch !== normalizedSlug) {
       const searchMatches = await getProducts({
@@ -796,7 +799,7 @@ export async function getProductBySlug(slug: string): Promise<WCProduct | null> 
     console.error("Error fetching product by slug:", error);
     return null;
   }
-}
+});
 
 export async function getProductVariations(
   productId: number,
@@ -899,17 +902,57 @@ export async function getProductsByIds(ids: number[]): Promise<WCProduct[]> {
     return [];
   }
 
-  const settledProducts = await Promise.all(ids.map((id) => getProductById(id)));
+  // Try batch fetch first (parallel individual requests as fallback)
+  // The Store API sometimes 404s on individual /products/{id} endpoints,
+  // so we use Promise.allSettled to handle partial failures gracefully.
+  const settledProducts = await Promise.allSettled(ids.map((id) => getProductById(id)));
 
-  return ids
-    .map((id) => settledProducts.find((product) => product?.id === id) ?? null)
+  const results = ids
+    .map((id) => {
+      const settled = settledProducts.find((s, i) => i === ids.indexOf(id));
+      if (settled?.status === "fulfilled" && settled.value) {
+        return settled.value;
+      }
+      return null;
+    })
     .filter((product): product is WCProduct => Boolean(product));
+
+  // If individual fetches all failed, try a search-based approach
+  if (results.length === 0 && ids.length > 0) {
+    try {
+      // Fetch all variations and filter by ID
+      const allProducts = await storeFetchCollection<StoreProduct>("/products", {
+        per_page: 100,
+      });
+      return ids
+        .map((id) => allProducts.find((p) => p.id === id))
+        .filter((p): p is StoreProduct => Boolean(p))
+        .map(mapStoreProduct);
+    } catch {
+      return [];
+    }
+  }
+
+  return results;
 }
 
-export async function getRelatedProducts(product: WCProduct): Promise<WCProduct[]> {
-  const variationProducts = await getVariationProducts();
+export async function getRelatedProducts(
+  product: WCProduct,
+  existingProducts?: WCProduct[],
+): Promise<WCProduct[]> {
+  // Use pre-fetched products if available, otherwise fetch only from same category
+  let candidates: WCProduct[];
+  if (existingProducts && existingProducts.length > 0) {
+    candidates = existingProducts;
+  } else {
+    // Only fetch products from the same category instead of the entire store
+    const categorySlug = product.categories[0]?.slug;
+    candidates = categorySlug
+      ? await getVariationProducts({ categorySlug })
+      : [];
+  }
 
-  return variationProducts
+  return candidates
     .filter(
       (candidate) =>
         candidate.parent_id !== product.id &&
